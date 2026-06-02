@@ -21,30 +21,30 @@ echo "Step 2: Generating summary (read_selection_ci.py)"
 echo "================================================="
 cd "$ROOT_DIR/unsupervised-is"
 source venv/bin/activate
-python read_selection_ci.py
+python scripts/read_selection_ci.py
 deactivate
 
-echo -e "\n================================================="
-echo "Step 3: Running atcBench"
-echo "================================================="
-cd "$ROOT_DIR/atcBench"
-source env/bin/activate
-bash run.sh 1
-deactivate
+# echo -e "\n================================================="
+# echo "Step 3: Running atcBench"
+# echo "================================================="
+# cd "$ROOT_DIR/atcBench"
+# source venv/bin/activate
+# bash run.sh 4
+# deactivate
 
-echo -e "\n================================================="
-echo "Step 4: Generating results CSV (Metrics)"
-echo "================================================="
-cd "$ROOT_DIR/atcBench"
-source env/bin/activate
-python scripts/generate_results_csv.py
+# echo -e "\n================================================="
+# echo "Step 4: Generating results CSV (Metrics)"
+# echo "================================================="
+# cd "$ROOT_DIR/atcBench"
+# source venv/bin/activate
+# python scripts/generate_results_csv.py
 
-echo -e "\n================================================="
-echo "Step 5: Generating results CSV (Times)"
-echo "================================================="
-python scripts/generate_times_csv.py
-deactivate
+# echo -e "\n================================================="
+# echo "Step 5: Generating results CSV (Times)"
+# echo "================================================="
+# python scripts/generate_times_csv.py
+# deactivate
 
-echo -e "\n================================================="
-echo "Pipeline execution completed successfully!"
-echo "================================================="
+# echo -e "\n================================================="
+# echo "Pipeline execution completed successfully!"
+# echo "================================================="

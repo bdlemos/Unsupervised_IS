@@ -25,6 +25,6 @@ for dataset in "${datasets[@]}"; do
     echo "$dataset"
     for method in "${methods[@]}"; do
         echo "$method"
-        python run_generateSplit.py -d "$dataset" -m "$method" --datain "$datain" --out "$out"
+        python scripts/run_generateSplit.py -d "$dataset" -m "$method" --datain "$datain" --out "$out"
     done
 done
