@@ -141,29 +141,14 @@ def _estimate_params_gmm(
     dict with keys: low_percentile, high_percentile, beta, theta,
                     low_threshold_, high_threshold_, component_means_
     """
-    # Detectar concentração excessiva: se 70%+ dos scores estão
-    # abaixo do percentil 30 do range, o scorer colapsou → fallback
-    p30_range = scores.min() + 0.30 * (scores.max() - scores.min())
-    concentration = np.mean(scores <= p30_range)
-    
-    if concentration > 0.70:
-        warnings.warn(
-            "[Adaptive-IS] Score distribution is heavily concentrated "
-            f"({concentration:.0%} below 30% of range). "
-            "GMM boundary unreliable — falling back to distribution_stats.",
-            UserWarning,
-        )
-        return _estimate_params_stats(scores)
-
-    # n_components = max(2, min(n_components, len(scores) // 10))
+    n_components = max(2, min(n_components, len(scores) // 10))
 
     gm = GaussianMixture(
-        n_components=3,
+        n_components=n_components,
         covariance_type="full",
         random_state=random_state,
         n_init=3,
         max_iter=200,
-        reg_covar=1e-3,
     )
     gm.fit(scores.reshape(-1, 1))
 
@@ -179,11 +164,11 @@ def _estimate_params_gmm(
     labels_sorted = np.array([label_map[l] for l in labels])
 
     # Boundary between component 0 (redundant) and component 1
-    low_threshold = float(means[1] - 2.0 * np.sqrt(gm.covariances_.ravel()[order[1]]))
+    low_threshold = float(means[0] + 2.0 * np.sqrt(gm.covariances_.ravel()[order[0]]))
 
     # Boundary between last two components
     if n_components >= 3:
-        high_threshold = float(means[1] + 2.0 * np.sqrt(gm.covariances_.ravel()[order[1]]))
+        high_threshold = float(means[-2] + 2.0 * np.sqrt(gm.covariances_.ravel()[order[-2]]))
     else:
         # With 2 components use the midpoint between the two means
         high_threshold = float((means[0] + means[-1]) / 2.0)
@@ -328,10 +313,14 @@ class AdaptiveIS(InstanceSelectionMixin):
     def __init__(
         self,
         base_method: Literal['autoencoder', 'gmm', 'perplexity'] = 'autoencoder',
+        adaptive_strategy: Literal['gmm_boundary', 'distribution_stats'] = 'gmm_boundary',
+        n_gmm_components: int = 3,
         random_state: int = 0,
         **base_kwargs,
     ) -> None:
         self.base_method        = base_method
+        self.adaptive_strategy  = adaptive_strategy
+        self.n_gmm_components   = n_gmm_components
         self.random_state       = random_state
         self.base_kwargs        = base_kwargs
         self.sample_indices_    = []
@@ -365,7 +354,7 @@ class AdaptiveIS(InstanceSelectionMixin):
                 random_state=self.random_state, **kwargs
             )
         elif self.base_method == 'perplexity':
-            kwargs.setdefault('n_topics', 10)
+            kwargs.setdefault('n_topics', 'auto')
             return perplexity_is.PerplexityIS(
                 random_state=self.random_state, **kwargs
             )
@@ -386,55 +375,29 @@ class AdaptiveIS(InstanceSelectionMixin):
         raise ValueError(f"Cannot extract scores for base_method='{self.base_method}'")
 
     def _estimate_params(self, scores: np.ndarray) -> dict:
-        """
-        Estimativa simplificada e robusta usando estatística de quantis.
-        Substitui a necessidade de um GMM e evita colapsos em distribuições unimodais.
-        """
-        q1, q2, q3 = np.percentile(scores, [25, 50, 75])
-        iqr = q3 - q1
-        n = len(scores)
+        """Dispatch to the configured adaptive strategy."""
+        if self.adaptive_strategy == 'gmm_boundary':
+            try:
+                return _estimate_params_gmm(
+                    scores,
+                    n_components=self.n_gmm_components,
+                    random_state=self.random_state,
+                )
+            except Exception as exc:
+                warnings.warn(
+                    f"[Adaptive-IS] GMM boundary estimation failed ({exc}). "
+                    "Falling back to distribution_stats.",
+                    UserWarning,
+                )
+                return _estimate_params_stats(scores)
 
-        # --- 1. Imbalance Proxy ---
-        p5, p95 = np.percentile(scores, [5, 95])
-        tail_ratio = (p95 + 1e-9) / (np.abs(p5) + 1e-9)
-        imbalance = float(np.tanh(tail_ratio / 10.0))
+        elif self.adaptive_strategy == 'distribution_stats':
+            return _estimate_params_stats(scores)
 
-        # --- 2. High Percentile (Ruído) ---
-        # Limite de Tukey conservador (k=4.0) para não cortar caudas de classes minoritárias
-        high_threshold = q3 + 4.0 * iqr
-        high_percentile = float(np.mean(scores <= high_threshold) * 100.0)
-        high_percentile = float(np.clip(high_percentile, 75.0, 99.0))
-
-        # --- 3. Low Percentile (Redundância) via Joelho ---
-        sorted_scores = np.sort(scores)
-        knee_idx = _find_knee(sorted_scores)
-        low_percentile = float(knee_idx / n * 100.0)
-        
-        # Evita que o limiar inferior encoste no superior
-        max_low = max(10.0, high_percentile - 15.0)
-        low_percentile = float(np.clip(low_percentile, 10.0, max_low))
-
-        # --- 4. Theta (Taxa de remoção de ruído) ---
-        base_theta = 0.30
-        theta = float(base_theta * (1.0 - imbalance))
-
-        # --- 5. Beta (Taxa de remoção de redundância) DIRETAMENTE PROPORCIONAL ---
-        # p_red é a fração exata da base que caiu na zona de redundância (0.10 a ~0.85)
-        p_red = low_percentile / 100.0
-        
-        # Multiplicamos por um fator de agressividade (ex: 1.5)
-        # Se 60% da base é redundante (p_red=0.60) -> beta tenta chegar a 0.90 (Remove 90%)
-        # Se 15% da base é redundante (p_red=0.15) -> beta fica em 0.22 (Remove 22%)
-        beta = float(np.clip(p_red, 0.10, 0.90))
-
-        return dict(
-            low_percentile=low_percentile,
-            high_percentile=high_percentile,
-            beta=beta,
-            theta=theta,
-            imbalance_proxy_=imbalance,
+        raise ValueError(
+            f"Unknown adaptive_strategy='{self.adaptive_strategy}'. "
+            "Choose 'gmm_boundary' or 'distribution_stats'."
         )
-
 
     def _apply_selection(
         self,
@@ -532,6 +495,10 @@ class AdaptiveIS(InstanceSelectionMixin):
             f"max: {scores.max():.4f}"
         )
 
+        print(
+            f"[Adaptive-IS] Step 2 — estimating thresholds via "
+            f"'{self.adaptive_strategy}' …"
+        )
         params = self._estimate_params(scores)
 
         # Persist estimated hyperparameters as public attributes
@@ -555,6 +522,9 @@ class AdaptiveIS(InstanceSelectionMixin):
             f"theta={self.theta_:.3f}, "
             f"imbalance_proxy={self.imbalance_proxy_:.3f}"
         )
+
+        if 'component_means_' in params:
+            print(f"[Adaptive-IS] GMM component means: {params['component_means_']}")
 
         print("[Adaptive-IS] Step 3 — applying selection …")
         self.mask, self.low_threshold_, self.high_threshold_ = self._apply_selection(
