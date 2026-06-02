@@ -137,21 +137,21 @@ DATASETS: List[Dict] = [
         "zenodo_id": "7555339",
         "zip_file": "subj.zip",
     },
-    # {
-    #     "name": "agnews",
-    #     "zenodo_id": "7555424",
-    #     "zip_file": "agnews.zip",
-    # },
-    # {
-    #     "name": "yelp_2013",
-    #     "zenodo_id": "7555898",
-    #     "zip_file": "yelp_2013.zip",
-    # },
-    # {
-    #     "name": "medline",
-    #     "zenodo_id": "7555820",
-    #     "zip_file": "medline.zip",
-    # },
+    {
+        "name": "agnews",
+        "zenodo_id": "7555424",
+        "zip_file": "agnews.zip",
+    },
+    {
+        "name": "yelp_2013",
+        "zenodo_id": "7555898",
+        "zip_file": "yelp_2013.zip",
+    },
+    {
+        "name": "medline",
+        "zenodo_id": "7555820",
+        "zip_file": "medline.zip",
+    },
 ]
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

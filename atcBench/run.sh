@@ -13,8 +13,8 @@ NUM_PROCESSES=${1:-1} # Padrão para 1 processo caso não seja informado
 echo "Running with $NUM_PROCESSES concurrent processes..."
 
 # Prefer project virtualenv python when available.
-if [[ -x "$ROOT_DIR/env/bin/python" ]]; then
-  PYTHON_BIN="$ROOT_DIR/env/bin/python"
+if [[ -x "$ROOT_DIR/venv/bin/python" ]]; then
+  PYTHON_BIN="$ROOT_DIR/venv/bin/python"
 else
   PYTHON_BIN="python"
 fi
