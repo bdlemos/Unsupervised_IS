@@ -182,7 +182,7 @@ def _estimate_params_quartiles(scores: np.ndarray) -> dict:
     #   • frac_q1 ≈ 0.40  (Q1 moderate)    → 1 - 0.40 = 0.60 → beta=0.60 #
     #   • frac_q1 ≈ 0.90  (Q1 very wide)   → 1 - 0.90 = 0.10 → clip 0.10 #
     # ------------------------------------------------------------------ #
-    beta_q1 = float(np.clip(1.0 - frac_q1, 0.10, 0.90))
+    beta_q1 = float(np.clip(1.0 - frac_q1, 0.10, 0.70))
     beta_q2 = float(np.clip(1.0 - frac_q2, 0.05, 0.60))
 
     # ------------------------------------------------------------------ #

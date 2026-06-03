@@ -1,5 +1,6 @@
-# Base com CUDA 12.1 + cuDNN 8 + Python 3.10 (compatível com torch>=2.3)
-FROM pytorch/pytorch:2.3.0-cuda12.1-cudnn8-runtime
+# Base com Python 3.8 (compatível com requirements antigos: numpy 1.17, sklearn 0.21, etc.)
+FROM python:3.12.3
+
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -14,12 +15,11 @@ ENV PYTHONUNBUFFERED=1
 # Estrutura: bash/ notebooks/ scripts/ settings/ src/
 WORKDIR /app/unsupervised-is
 
-COPY unsupervised-is/settings/requirements.txt ./settings/requirements.txt
+COPY unsupervised-is/settings/requirements_docker.txt ./settings/requirements_docker.txt
 
-# Cria venv isolado e instala dependências (espelhando "source venv/bin/activate")
 RUN python -m venv venv \
     && venv/bin/pip install --upgrade pip \
-    && venv/bin/pip install --no-cache-dir -r settings/requirements.txt
+    && venv/bin/pip install --no-cache-dir -r ./settings/requirements_docker.txt
 
 # Copia o restante do código do projeto (inclui notebooks/ e scripts/)
 COPY unsupervised-is/ ./
@@ -27,12 +27,11 @@ COPY unsupervised-is/ ./
 # ─── Projeto 2: atcBench ─────────────────────────────────────────────────────
 WORKDIR /app/atcBench
 
-COPY atcBench/settings/requirements.txt ./settings/requirements.txt
+COPY atcBench/settings/requirements_docker.txt ./settings/requirements_docker.txt
 
-# Cria venv isolado e instala dependências (espelhando "source venv/bin/activate")
 RUN python -m venv venv \
     && venv/bin/pip install --upgrade pip \
-    && venv/bin/pip install --no-cache-dir -r settings/requirements.txt
+    && venv/bin/pip install --no-cache-dir -r ./settings/requirements_docker.txt
 
 # Copia o restante do código do projeto
 COPY atcBench/ ./

@@ -1,16 +1,52 @@
 #!/usr/bin/env bash
 
-# run command -> nohup ./run.sh [NUM_PROCESSES] > run.log 2>&1 &
-# Exemplo com 4 processos: nohup ./run.sh 4 > run.log 2>&1 &
+# run command -> nohup ./run.sh [--num-processes N] [--methods m1,m2,...] [--datasets d1,d2,...] > run.log 2>&1 &
+# Exemplo com 4 processos: nohup ./run.sh --num-processes 4 > run.log 2>&1 &
 
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT_DIR"
 
-NUM_PROCESSES=${1:-1} # Padrão para 1 processo caso não seja informado
+# ── Default values ─────────────────────────────────────────────────────────
+DEFAULT_NUM_PROCESSES=1
+DEFAULT_METHODS="adaptive-v2-perplexity,adaptive-perplexity"
+DEFAULT_DATASETS="mpqa,reuters90,sst1,ohsumed,twitter,webkb,yelp_reviews,sst2,dblp,acm"
+
+NUM_PROCESSES=$DEFAULT_NUM_PROCESSES
+METHODS_ARG="$DEFAULT_METHODS"
+DATASETS_ARG="$DEFAULT_DATASETS"
+
+# ── Argument parsing ────────────────────────────────────────────────────────
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --num-processes|-n)
+            NUM_PROCESSES="$2"
+            shift 2
+            ;;
+        --methods)
+            METHODS_ARG="$2"
+            shift 2
+            ;;
+        --datasets)
+            DATASETS_ARG="$2"
+            shift 2
+            ;;
+        *)
+            echo "Unknown argument: $1"
+            echo "Usage: $0 [--num-processes <N>] [--methods <m1,m2,...>] [--datasets <d1,d2,...>]"
+            exit 1
+            ;;
+    esac
+done
+
+# Convert comma-separated strings to bash arrays
+IFS=',' read -ra methods  <<< "$METHODS_ARG"
+IFS=',' read -ra datasets <<< "$DATASETS_ARG"
 
 echo "Running with $NUM_PROCESSES concurrent processes..."
+echo "Methods  : ${methods[*]}"
+echo "Datasets : ${datasets[*]}"
 
 # Prefer project virtualenv python when available.
 if [[ -x "$ROOT_DIR/venv/bin/python" ]]; then
@@ -25,9 +61,6 @@ export PYTHON_BIN
 
 # DICA: Para melhor balanceamento de carga, ordene os datasets do MAIOR para o MENOR.
 # Assim, os mais pesados começam primeiro e os menores preenchem o tempo no final.
-datasets=(mpqa reuters90 sst1 ohsumed twitter webkb yelp_reviews sst2 dblp acm )
-methods=(adaptive-v2-perplexity adaptive-perplexity)
-# methods=(autoencoder-is random-is biois gmm-is perplexity-is no-is)
 
 # Monta todas as combinações em um array
 combos=()
