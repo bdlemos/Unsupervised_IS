@@ -19,13 +19,14 @@ Pipeline completo de seleção de instâncias não-supervisionada (`unsupervised
 │       ├── datasets/                   # Datasets de entrada
 │       ├── outsel/                     # Splits gerados pela seleção
 │       └── logs/                       # Logs de execução
-└── atcBench/                           # Projeto de benchmark
-    ├── run.sh
-    ├── main.py
-    ├── conf/data/template.yaml
-    ├── settings/requirements_docker.txt
-    ├── resources/output/               # Resultados do benchmark
-    └── logs/                           # Logs por combinação dataset/método
+├── atcBench/                           # Projeto de benchmark
+│   ├── run.sh
+│   ├── main.py
+│   ├── conf/data/template.yaml
+│   ├── settings/requirements_docker.txt
+│   ├── resources/output/               # Resultados do benchmark
+│   ├── resources/results/              # Tabelas CSV consolidadas de resultados
+│   └── logs/                           # Logs por combinação dataset/método
 ```
 
 ---
@@ -43,6 +44,7 @@ docker build -t unsupervised-is /data/bernardolemos/
 ```bash
 mkdir -p /data/bernardolemos/unsupervised-is/resources/logs
 mkdir -p /data/bernardolemos/atcBench/resources/output
+mkdir -p /data/bernardolemos/atcBench/resources/results
 mkdir -p /data/bernardolemos/atcBench/logs
 ```
 
@@ -55,6 +57,7 @@ docker run -d --rm \
   --memory="32g" \
   -v /data/bernardolemos/unsupervised-is/resources:/app/unsupervised-is/resources \
   -v /data/bernardolemos/atcBench/resources/output:/app/atcBench/resources/output \
+  -v /data/bernardolemos/atcBench/resources/results:/app/atcBench/resources/results \
   -v /data/bernardolemos/atcBench/logs:/app/atcBench/logs \
   --name pipeline-run \
   unsupervised-is \
@@ -73,6 +76,7 @@ docker run -it --rm \
   --memory="32g" \
   -v /data/bernardolemos/unsupervised-is/resources:/app/unsupervised-is/resources \
   -v /data/bernardolemos/atcBench/resources/output:/app/atcBench/resources/output \
+  -v /data/bernardolemos/atcBench/resources/results:/app/atcBench/resources/results \
   -v /data/bernardolemos/atcBench/logs:/app/atcBench/logs \
   unsupervised-is \
   bash run_pipeline.sh \
@@ -161,4 +165,6 @@ tail -f pipeline_geral.log
 | `unsupervised-is/resources/outsel/selection/<dataset>/` | Splits gerados por método |
 | `unsupervised-is/resources/outsel/selection_summary.csv` | Resumo de tempo e redução |
 | `atcBench/resources/output/` | Métricas de classificação por fold |
+| `atcBench/resources/results/results_from_outputs.csv` | CSV consolidado com as métricas de classificação |
+| `atcBench/resources/results/times_from_outputs.csv` | CSV consolidado com os tempos totais (Seleção + Treino) |
 | `atcBench/logs/run_<dataset>_<method>.log` | Log detalhado por combinação |

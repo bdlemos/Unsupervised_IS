@@ -78,12 +78,13 @@ echo "Step 4: Generating results CSV (Metrics)"
 echo "================================================="
 cd "$ROOT_DIR/atcBench"
 source venv/bin/activate
-python scripts/generate_results_csv.py
+mkdir -p resources/results
+python scripts/generate_results_csv.py -o resources/results/results_from_outputs.csv
 
 echo -e "\n================================================="
 echo "Step 5: Generating results CSV (Times)"
 echo "================================================="
-python scripts/generate_times_csv.py
+python scripts/generate_times_csv.py -o resources/results/times_from_outputs.csv
 deactivate
 
 echo -e "\n================================================="
