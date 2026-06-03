@@ -53,6 +53,11 @@ from typing import List, Dict
 
 DATASETS: List[Dict] = [
     {
+        "name": "twitter",
+        "zenodo_id": "7554707",
+        "zip_file": "twitter.zip",
+    },
+    {
         "name": "webkb",
         "zenodo_id": "7555368",
         "zip_file": "webkb.zip",

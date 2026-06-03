@@ -84,7 +84,7 @@ def load_selection_csv(path: Path) -> dict:
 def main():
     p = argparse.ArgumentParser(description="Generate CSV of fold macros from outputs")
     p.add_argument("--pattern", default=None, help="glob pattern to find measures (default: resources/output/*/**/measures.fold_*.json)")
-    p.add_argument("--selection-csv", default="/home/bernardo/projects/unsupervised-is/resources/outsel/selection_summary.csv", help="CSV with selection reduction values to include (optional)")
+    p.add_argument("--selection-csv", default=os.environ.get("UNSUPERVISED_IS_RESOURCES", "/app/unsupervised-is/resources") + "/outsel/selection_summary.csv", help="CSV with selection reduction values to include (optional)")
     p.add_argument("-o", "--output", default="results_from_outputs.csv", help="output CSV path")
     args = p.parse_args()
     pattern = args.pattern if args.pattern else PATTERN_DEFAULT

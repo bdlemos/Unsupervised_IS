@@ -114,7 +114,7 @@ class BIOIS(InstanceSelectionMixin):
             X_train, y_train = X[train_index], y[train_index]
             X_val, y_val = X[val_index], y[val_index]
 
-            classifier = LogisticRegression(C=1.0,solver='lbfgs',multi_class='ovr',n_jobs=-1)
+            classifier = LogisticRegression(C=1.0,solver='lbfgs',n_jobs=-1)
             print(classifier)
             classifier.fit(X_train, y_train)
 
