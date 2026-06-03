@@ -7,15 +7,18 @@ Uses Student's t for small samples when `scipy` is available; falls back to z=1.
 """
 from pathlib import Path
 import json
+import os
 import math
 import statistics
 import csv
 import warnings
 
-ROOT = Path(__file__).resolve().parents[0]
+ROOT = Path(__file__).resolve().parent.parent
 OUTSEL_ROOT = ROOT / "resources" / "outsel"
 OUT_JSON = OUTSEL_ROOT / "selection_summary.json"
 OUT_CSV = OUTSEL_ROOT / "selection_summary.csv"
+
+# ─── Projeto 1: unsupervised-is ──────────────────────────────────────────────
 
 try:
     from scipy.stats import t as student_t
