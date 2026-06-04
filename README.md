@@ -61,11 +61,37 @@ docker run -d --rm \
   -v /data/bernardolemos/atcBench/logs:/app/atcBench/logs \
   --name pipeline-run \
   unsupervised-is \
-  bash run_pipeline.sh
+  bash run_pipeline.sh --datasets "mpqa,trec,sst2,twitter,vader_movie,movie_review,sst1,pang_movie,subj,yelp_reviews,wos5736,reuters90,webkb,wos11967,ohsumed,20ng,agnews,dblp,books,yelp_2013,medline"
 
 # Acompanhar os logs em tempo real
 docker logs -f pipeline-run
 ```
+
+### 3.1. Persistindo os logs de execução em arquivo (equivalente ao nohup)
+
+#### Abordagem recomendada
+Executa em background (`-d`) gerenciado pelo Docker, mas usa o utilitário `tee` dentro do container para salvar a saída na pasta raiz do container:
+
+```bash
+docker run -d --rm \
+  --gpus '"device=1"' \
+  --cpus="16" \
+  --memory="32g" \
+  -v /data/bernardolemos:/app/host \
+  -v /data/bernardolemos/unsupervised-is/resources:/app/unsupervised-is/resources \
+  -v /data/bernardolemos/atcBench/resources/output:/app/atcBench/resources/output \
+  -v /data/bernardolemos/atcBench/resources/results:/app/atcBench/resources/results \
+  -v /data/bernardolemos/atcBench/logs:/app/atcBench/logs \
+  --name pipeline-run \
+  unsupervised-is \
+  bash -c "bash run_pipeline.sh 2>&1 | tee /app/host/pipeline_geral.log"
+
+# Você pode acompanhar tanto via docker quanto lendo o arquivo na máquina física:
+docker logs -f pipeline-run
+# OU:
+tail -f /data/bernardolemos/pipeline_geral.log
+```
+
 
 ### 4. Run filtrado (teste rápido)
 
