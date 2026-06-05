@@ -141,7 +141,7 @@ def translate_train_idxinfold(is_splits, old_splits):
 
         train_index = [old_train_idxs[t] for t in new_train_idxs]
 
-        splits_to_save_translated.loc[f].train_idxs = train_index
+        splits_to_save_translated.at[f, 'train_idxs'] = train_index
 
     return splits_to_save_translated
 
