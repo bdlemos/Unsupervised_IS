@@ -113,7 +113,7 @@ if run_step 3 benchmark; then
     echo "================================================="
     cd "$ROOT_DIR/atcBench"
     source venv/bin/activate
-    bash run.sh --num-processes 5 --methods "$METHODS" --datasets "$DATASETS"
+    bash run.sh --num-processes 3 --methods "$METHODS" --datasets "$DATASETS"
     deactivate
 fi
 
