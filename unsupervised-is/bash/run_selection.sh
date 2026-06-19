@@ -1,9 +1,10 @@
 cd $WORKDIR
 
-datain="$WORKDIR/resources/datasets"
-out="$WORKDIR/resources/outsel"
+datain="/data/bernardolemos/datasets"
+out="/data/bernardolemos/results/instance_selection"
 
 mkdir -p $out
+mkdir -p "resources/logs"
 
 datasets=(aisopos_ntua_2L)
 methods=(bio-is)
