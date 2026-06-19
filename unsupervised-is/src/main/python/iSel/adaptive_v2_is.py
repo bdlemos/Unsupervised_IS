@@ -63,7 +63,7 @@ Let ``total_range = P100 - P0`` (with floor of ``1e-9`` for stability).
     # We use (1 - frac) as the raw signal and rescale into the desired clip range.
     #
     beta_q1 = clip(1 - frac_q1,  0.10, 0.90)
-    beta_q2 = clip(1 - frac_q2,  0.05, 0.60)
+    beta_q2 = clip(1 - frac_q2,  0.05, 0.40)
 
     # Imbalance proxy (label-free):
     #   large P95/P5 ratio → heavy right tail → likely imbalanced
@@ -75,9 +75,11 @@ Let ``total_range = P100 - P0`` (with floor of ``1e-9`` for stability).
 Uniform vs. Weighted Sampling
 ------------------------------
 
-* **Q1 and Q2** use **uniform random sampling** within each zone —
-  there is no strong a-priori reason to prefer removing one redundant
-  instance over another within the same quartile.
+* **Q1** uses **score-proportional weighted sampling** within the primary
+  redundancy zone, favoring instances with the lowest scores (most redundant).
+* **Q2** uses **score-proportional weighted sampling** within the secondary
+  redundancy zone, giving slightly more probability to instances closer to
+  the lower edge of the quartile (i.e. more redundant examples).
 * **Q4** uses **score-proportional weighted sampling** — within the noise
   band, instances with higher scores are more likely to be true outliers
   and are therefore given a higher removal probability.
@@ -106,124 +108,57 @@ from src.main.python.iSel import autoencoder_is, gmm_is, perplexity_is
 # ---------------------------------------------------------------------------
 # A. Quartile-density parameter estimation
 # ---------------------------------------------------------------------------
-
 def _estimate_params_quartiles(scores: np.ndarray) -> dict:
-    """Estimate instance-selection parameters from the quartile structure
-    of the score distribution.
-
-    This is a fully non-parametric approach — no distribution is fitted.
-    It is robust to degenerate score distributions (spikes, heavy tails)
-    that cause GMM-based estimators to fail.
-
-    Parameters
-    ----------
-    scores : np.ndarray, shape (n_samples,)
-        1-D array of per-instance scores.  Lower scores indicate redundant
-        instances; higher scores indicate potentially noisy / rare instances.
-
-    Returns
-    -------
-    dict with keys:
-        p0, p25, p50, p75, p100 : float
-            Quartile boundary values.
-        beta_q1 : float in [0.10, 0.90]
-            Removal rate for Q1 (scores ≤ P25).
-        beta_q2 : float in [0.05, 0.60]
-            Removal rate for Q2 (P25 < scores ≤ P50).
-        theta : float in [0.0, 0.30]
-            Removal rate for Q4 (scores > P75).
-        imbalance_proxy : float in [0, 1)
-            Proxy for dataset imbalance derived from the tail ratio.
-            Values near 1 indicate likely class imbalance.
-
-    Notes
-    -----
-    Mathematical derivation of beta_q1 and beta_q2
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    Each quartile contains exactly 25% of the data.  Its *width* on the
-    score axis reflects local density:
-
-        frac_qi = width_qi / total_range
-
-    Since density ∝ 1/width, a small frac → high density → more redundancy
-    → higher removal rate.  We map this via:
-
-        beta_qi = clip(1 - frac_qi, lo, hi)
-
-    When frac_qi → 0 (all 25% squeezed into a point), beta → clip_max.
-    When frac_qi → 1 (25% spread over the full range), beta → clip_min.
-    The clip bounds encode domain knowledge: we never remove more than 90%
-    of Q1 or more than 60% of Q2, and we always remove at least a small
-    fraction of each zone.
-    """
     scores = np.asarray(scores, dtype=np.float64).ravel()
+    eps = 1e-9
 
-    # ------------------------------------------------------------------ #
-    # 1. Quartile boundaries                                               #
-    # ------------------------------------------------------------------ #
     p0, p25, p50, p75, p100 = np.percentile(scores, [0, 25, 50, 75, 100])
+    total_range = p100 - p0 + eps
 
-    total_range = p100 - p0 + 1e-9   # floor prevents division by zero
+    # Densidade de cada quartil: 25% da massa / largura do intervalo
+    w1 = (p25 - p0)  + eps
+    w2 = (p50 - p25) + eps
+    w3 = (p75 - p50) + eps
+    w4 = (p100 - p75) + eps
 
-    # ------------------------------------------------------------------ #
-    # 2. Quartile widths as fractions of the total range                   #
-    # ------------------------------------------------------------------ #
-    width_q1 = p25 - p0
-    width_q2 = p50 - p25
+    d1, d2, d3, d4 = 0.25/w1, 0.25/w2, 0.25/w3, 0.25/w4
 
-    frac_q1 = width_q1 / total_range   # ∈ [0, 1]
-    frac_q2 = width_q2 / total_range   # ∈ [0, 1]
+    # Fallback: Q3 degenerado (largura < 1% do range total)
+    Q3_DEGEN_THRESH = 0.01 * total_range
+    q3_degenerate = w3 < Q3_DEGEN_THRESH
 
-    # ------------------------------------------------------------------ #
-    # 3. Removal rates — inversely proportional to quartile width          #
-    #                                                                      #
-    # Intuition:                                                           #
-    #   • frac_q1 ≈ 0.02  (Q1 very narrow) → 1 - 0.02 = 0.98 → clip 0.90 #
-    #   • frac_q1 ≈ 0.40  (Q1 moderate)    → 1 - 0.40 = 0.60 → beta=0.60 #
-    #   • frac_q1 ≈ 0.90  (Q1 very wide)   → 1 - 0.90 = 0.10 → clip 0.10 #
-    # ------------------------------------------------------------------ #
-    beta_q1 = float(np.clip(1.0 - frac_q1, 0.10, 0.70))
-    beta_q2 = float(np.clip(1.0 - frac_q2, 0.05, 0.60))
+    if q3_degenerate:
+        # Sem referência confiável → normaliza pelo máximo absoluto
+        d_max = max(d1, d2, d3, d4)
+        beta_q1 = float(np.clip(d1 / d_max, 0.10, 0.50))
+        beta_q2 = float(np.clip(d2 / d_max, 0.05, 0.30))
+        offset  = 0.0
+        fallback_used = True
+    else:
+        # Offset adaptativo: mediana dos log-ratios de todos os quartis vs Q3
+        log_ratios = np.array([np.log(d1/d3), np.log(d2/d3), np.log(d4/d3)])
+        offset = float(np.median(log_ratios))
 
-    # ------------------------------------------------------------------ #
-    # 4. Imbalance proxy — label-free tail-ratio heuristic                 #
-    #                                                                      #
-    #   imbalance_proxy = tanh( P95 / (|P5| + ε) / 10 )                  #
-    #                                                                      #
-    # A large P95/P5 ratio signals a heavy right tail, which is typical   #
-    # when minority-class instances concentrate at high scores.            #
-    # tanh compresses the ratio to [0, 1).                                 #
-    # ------------------------------------------------------------------ #
-    p5  = float(np.percentile(scores, 5))
-    p95 = float(np.percentile(scores, 95))
+        # sigmoid(log(di/d3) - offset): > 0.5 quando qi mais denso que a mediana
+        beta_q1 = float(np.clip(1/(1+np.exp(-(np.log(d1/d3) - offset))), 0.10, 0.90))
+        beta_q2 = float(np.clip(1/(1+np.exp(-(np.log(d2/d3) - offset))), 0.05, 0.40))
+        fallback_used = False
 
-    tail_ratio      = p95 / (abs(p5) + 1e-9)
-    imbalance_proxy = float(np.tanh(tail_ratio / 10.0))
-
-    # ------------------------------------------------------------------ #
-    # 5. Theta — noise removal rate, shrunk by imbalance                   #
-    #                                                                      #
-    #   theta = 0.30 × (1 - imbalance_proxy)                              #
-    #                                                                      #
-    # When imbalance ≈ 1 (high imbalance risk) → theta ≈ 0.              #
-    # When imbalance ≈ 0 (balanced distribution) → theta ≈ 0.30.          #
-    # ------------------------------------------------------------------ #
-    theta = float(0.30 * (1.0 - imbalance_proxy))
+    # Theta (imbalance proxy inalterado)
+    p5_val  = float(np.percentile(scores, 75))
+    p95_val = float(np.percentile(scores, 100))
+    imbalance_proxy = float(np.tanh((p95_val / (abs(p5_val) + eps)) / 10.0))
+    theta = float(0.8 * (1.0 - imbalance_proxy))
 
     return dict(
-        p0=float(p0),
-        p25=float(p25),
-        p50=float(p50),
-        p75=float(p75),
-        p100=float(p100),
-        beta_q1=beta_q1,
-        beta_q2=beta_q2,
-        theta=theta,
+        p0=float(p0), p25=float(p25), p50=float(p50),
+        p75=float(p75), p100=float(p100),
+        beta_q1=beta_q1, beta_q2=beta_q2, theta=theta,
         imbalance_proxy=imbalance_proxy,
-        # diagnostics
-        frac_q1=float(frac_q1),
-        frac_q2=float(frac_q2),
-        total_range=float(total_range - 1e-9),  # original range for display
+        offset=offset, fallback_used=fallback_used,
+        frac_q1=float(w1/total_range), frac_q2=float(w2/total_range),
+        total_range=float(total_range - eps),
+        d1=float(d1), d2=float(d2), d3=float(d3), d4=float(d4),
     )
 
 
@@ -395,9 +330,9 @@ class AdaptiveV2IS(InstanceSelectionMixin):
         kwargs.update(low_percentile=0.0, high_percentile=100.0, beta=0.0, theta=0.0)
 
         if self.base_method == 'autoencoder':
-            kwargs.setdefault('n_epochs', 10)
-            kwargs.setdefault('batch_size', 64)
-            kwargs.setdefault('bottleneck_ratio', 0.05)
+            kwargs.setdefault('n_epochs', 50)
+            kwargs.setdefault('batch_size', 512)
+            kwargs.setdefault('bottleneck_ratio', 0.25)
             return autoencoder_is.AutoencoderIS(random_state=self.random_state, **kwargs)
 
         elif self.base_method == 'gmm':

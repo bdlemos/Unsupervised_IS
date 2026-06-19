@@ -67,18 +67,18 @@ class _Autoencoder(nn.Module):
         self.encoder = nn.Sequential(
             nn.Linear(n_features, encoder_dim),
             nn.BatchNorm1d(encoder_dim),
-            # nn.ReLU(inplace=True),
+            nn.ReLU(inplace=True),
             nn.Dropout(dropout),
 
             nn.Linear(encoder_dim, bottleneck),
             nn.BatchNorm1d(bottleneck),
-            # nn.ReLU(inplace=True),
+            nn.ReLU(inplace=True),
         )
 
         self.decoder = nn.Sequential(
             nn.Linear(bottleneck, encoder_dim),
             nn.BatchNorm1d(encoder_dim),
-            # nn.ReLU(inplace=True),
+            nn.ReLU(inplace=True),
             nn.Dropout(dropout),
 
             nn.Linear(encoder_dim, n_features),
@@ -298,10 +298,10 @@ class AutoencoderIS(InstanceSelectionMixin):
         :param n_features: Number of input features.
         :return: (bottleneck, encoder_dim)
         """
-        # bottleneck = max(2, int(n_features * self.bottleneck_ratio))
-        bottleneck = 10
-        # encoder_dim = max(bottleneck + 1, int((n_features + bottleneck) / 2))
-        encoder_dim = 20
+        bottleneck = max(2, int(n_features * self.bottleneck_ratio))
+        # bottleneck = 10
+        encoder_dim = max(bottleneck + 1, int((n_features + bottleneck) / 2))
+        # encoder_dim = 20
         print(f"[AE-IS] Architecture: {n_features} → {encoder_dim} → "
               f"{bottleneck} → {encoder_dim} → {n_features}")
         return bottleneck, encoder_dim
