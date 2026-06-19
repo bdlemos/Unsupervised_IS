@@ -8,7 +8,10 @@ from src.utils.utils import get_initialize_config, set_seed_from_config, getdata
 from src.model.general import getClassifier
 
 
-KNOWN_METHODS = ["autoencoder-is", "perplexity-is", "random-is", "gmm-is", "biois", "random", "no-is", "adaptive-perplexity", "adaptive-v2-perplexity"]
+KNOWN_METHODS = [
+    "autoencoder-is", "perplexity-is", "random-is", "gmm-is", "biois", "random",
+    "no-is", "adaptive-perplexity", "adaptive-v2-perplexity", "adaptive-cluster-is"
+]
 
 
 def rewrite_combo_data_override(argv):
@@ -38,9 +41,9 @@ def rewrite_combo_data_override(argv):
 
 
 
-@hydra.main(config_path=CONFIG_PATH, config_name=CONFIG_NAME) 
+@hydra.main(config_path=CONFIG_PATH, config_name=CONFIG_NAME)
 def main(exp_dict: DictConfig):
-    
+
     config = get_initialize_config(exp_dict)
     model_config = config.model
     dataset = config.data.dataset
@@ -50,12 +53,12 @@ def main(exp_dict: DictConfig):
     #for fold in [0]:
 
         X_train, y_train, X_test, y_test = getdata(config, fold)
-        
+
         clf = getClassifier(model_config, dataset)
 
         #Training
         clf.fit(X_train, y_train)
-        
+
         #Predicting
         y_pred_proba = clf.predict_proba(X_test)
         #y_pred = np.argmax(y_pred_proba, axis=-1)

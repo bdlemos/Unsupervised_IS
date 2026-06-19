@@ -12,9 +12,12 @@ export PYTHONPATH="$WORKDIR:${PYTHONPATH:-}"
 # ── Default values ─────────────────────────────────────────────────────────
 DEFAULT_METHODS="adaptive-v2-perplexity,adaptive-perplexity"
 DEFAULT_DATASETS="mpqa,reuters90,sst1,ohsumed,twitter,webkb,yelp_reviews,sst2,dblp,acm"
+DEFAULT_INPUT_REP="tfidf"
 
 METHODS_ARG="$DEFAULT_METHODS"
 DATASETS_ARG="$DEFAULT_DATASETS"
+INPUT_REP_ARG="$DEFAULT_INPUT_REP"
+
 
 # ── Argument parsing ────────────────────────────────────────────────────────
 while [[ $# -gt 0 ]]; do
@@ -27,9 +30,13 @@ while [[ $# -gt 0 ]]; do
             DATASETS_ARG="$2"
             shift 2
             ;;
+        --inputrep)
+            INPUT_REP_ARG="$2"
+            shift 2
+            ;;
         *)
             echo "Unknown argument: $1"
-            echo "Usage: $0 [--methods <m1,m2,...>] [--datasets <d1,d2,...>]"
+            echo "Usage: $0 [--methods <m1,m2,...>] [--datasets <d1,d2,...>] [--inputrep <input_rep>]"
             exit 1
             ;;
     esac
@@ -51,6 +58,6 @@ for dataset in "${datasets[@]}"; do
     echo "Dataset: $dataset"
     for method in "${methods[@]}"; do
         echo "  Method: $method"
-        python scripts/run_generateSplit.py -d "$dataset" -m "$method" --datain "$datain" --out "$out"
+        python scripts/run_generateSplit.py -d "$dataset" -m "$method" --datain "$datain" --out "$out" --inputrep "$INPUT_REP_ARG"
     done
 done

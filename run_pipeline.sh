@@ -39,6 +39,7 @@ fi
 METHODS="$DEFAULT_METHODS"
 DATASETS="$DEFAULT_DATASETS"
 STEPS=""
+INPUT_REP="tfidf"
 
 # ── Step selector helper ──────────────────────────────────────────────────────
 run_step() {
@@ -53,6 +54,8 @@ run_step() {
     return 1
 }
 
+
+
 # ── Argument parsing ──────────────────────────────────────────────────────────
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -62,6 +65,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --datasets)
             DATASETS="$2"
+            shift 2
+            ;;
+        --inputrep)
+            INPUT_REP="$2"
             shift 2
             ;;
         --steps)
@@ -91,7 +98,7 @@ if run_step 1 selection; then
     echo "================================================="
     cd "$ROOT_DIR/unsupervised-is"
     source venv/bin/activate
-    bash bash/run_unsupervised_selection.sh --methods "$METHODS" --datasets "$DATASETS"
+    bash bash/run_unsupervised_selection.sh --methods "$METHODS" --datasets "$DATASETS" --inputrep "$INPUT_REP"
     deactivate
 fi
 
