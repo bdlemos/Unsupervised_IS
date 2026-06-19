@@ -278,8 +278,8 @@ def main() -> None:
     )
     parser.add_argument(
         "--data-dir",
-        default="resources/datasets",
-        help="Base directory for datasets (default: resources/datasets/)",
+        default="/data/bernardolemos/datasets",
+        help="Base directory for datasets (default: /data/bernardolemos/datasets/)",
     )
     args = parser.parse_args()
 

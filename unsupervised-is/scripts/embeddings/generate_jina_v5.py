@@ -12,7 +12,7 @@ from transformers import AutoModel
 
 import torch
 
-DATASETS_BASE = Path("/data/bernardolemos/unsupervised-is/resources/datasets")
+DATASETS_BASE = Path("/data/bernardolemos/datasets")
 MODEL_ID = "jinaai/jina-embeddings-v5-text-small"
 REPR_DIR = "jina-v5"
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")

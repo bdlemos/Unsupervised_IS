@@ -16,7 +16,9 @@ ROOT_DIR="/home/bernardo/projects"
 DEFAULT_METHODS="no-is,biois,perplexity-is,autoencoder-is,gmm-is,adaptive-perplexity,adaptive-v2-perplexity"
 
 # Discover datasets automatically and sort them by the size of their texts.txt
-DATASETS_DIR="$ROOT_DIR/unsupervised-is/resources/datasets"
+export DATASETS_DIR="/data/bernardolemos/datasets"
+export RESULTS_DIR="/data/bernardolemos/results"
+
 if [[ -d "$DATASETS_DIR" ]]; then
     DEFAULT_DATASETS="$(python3 -c "
 import os
@@ -97,7 +99,7 @@ if run_step 1 selection; then
     echo "Step 1: Running unsupervised selection"
     echo "================================================="
     cd "$ROOT_DIR/unsupervised-is"
-    source venv/bin/activate
+    source "$ROOT_DIR/venv/bin/activate"
     bash bash/run_unsupervised_selection.sh --methods "$METHODS" --datasets "$DATASETS" --inputrep "$INPUT_REP"
     deactivate
 fi
@@ -108,7 +110,7 @@ if run_step 2 summary; then
     echo "Step 2: Generating summary (read_selection_ci.py)"
     echo "================================================="
     cd "$ROOT_DIR/unsupervised-is"
-    source venv/bin/activate
+    source "$ROOT_DIR/venv/bin/activate"
     python scripts/read_selection_ci.py
     deactivate
 fi
@@ -119,7 +121,7 @@ if run_step 3 benchmark; then
     echo "Step 3: Running atcBench"
     echo "================================================="
     cd "$ROOT_DIR/atcBench"
-    source venv/bin/activate
+    source "$ROOT_DIR/venv/bin/activate"
     bash run.sh --num-processes 1 --methods "$METHODS" --datasets "$DATASETS"
     deactivate
 fi
@@ -130,7 +132,7 @@ if run_step 4 metrics; then
     echo "Step 4: Generating results CSV (Metrics)"
     echo "================================================="
     cd "$ROOT_DIR/atcBench"
-    source venv/bin/activate
+    source "$ROOT_DIR/venv/bin/activate"
     mkdir -p resources/results
     python scripts/generate_results_csv.py -o resources/results/results_from_outputs.csv
     deactivate
@@ -142,7 +144,7 @@ if run_step 5 times; then
     echo "Step 5: Generating results CSV (Times)"
     echo "================================================="
     cd "$ROOT_DIR/atcBench"
-    source venv/bin/activate
+    source "$ROOT_DIR/venv/bin/activate"
     mkdir -p resources/results
     python scripts/generate_times_csv.py -o resources/results/times_from_outputs.csv
     deactivate

@@ -46,10 +46,11 @@ done
 IFS=',' read -ra methods  <<< "$METHODS_ARG"
 IFS=',' read -ra datasets <<< "$DATASETS_ARG"
 
-datain="$WORKDIR/resources/datasets"
-out="$WORKDIR/resources/outsel"
+datain="/data/bernardolemos/datasets"
+out="/data/bernardolemos/results/instance_selection"
 
 mkdir -p "$out"
+mkdir -p "resources/logs"
 
 echo "Methods  : ${methods[*]}"
 echo "Datasets : ${datasets[*]}"

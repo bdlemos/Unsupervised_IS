@@ -14,7 +14,8 @@ import csv
 import warnings
 
 ROOT = Path(__file__).resolve().parent.parent
-OUTSEL_ROOT = ROOT / "resources" / "outsel"
+RESULTS_DIR = Path(os.environ.get("RESULTS_DIR", "/data/bernardolemos/results"))
+OUTSEL_ROOT = RESULTS_DIR / "instance_selection"
 OUT_JSON = OUTSEL_ROOT / "selection_summary.json"
 OUT_CSV = OUTSEL_ROOT / "selection_summary.csv"
 
