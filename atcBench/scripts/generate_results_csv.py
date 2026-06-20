@@ -107,7 +107,8 @@ def main():
         fold_set.add(fold)
 
         # determine top-level folder name that contains dataset and method
-        rel = os.path.relpath(os.path.dirname(path), "resources/output")
+        base_dir = pattern.split("/*/**/")[0] if "/*/**/" in pattern else "resources/output"
+        rel = os.path.relpath(os.path.dirname(path), base_dir)
         parts = rel.split(os.sep) if rel != "." else [os.path.basename(os.path.dirname(path))]
         model = parts[0] if parts else ""
         top = find_top_dir(parts)
