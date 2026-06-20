@@ -16,7 +16,7 @@ DATASETS_BASE = Path("/data/bernardolemos/datasets")
 MODEL_ID = "jinaai/jina-embeddings-v5-text-small"
 REPR_DIR = "jina-v5"
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-BATCH_SIZE = 64
+BATCH_SIZE = 16
 TRUNCATE_DIM = 256
 DTYPE = torch.bfloat16
 
@@ -125,8 +125,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--datasets", nargs="*", default=None,
                         help="Dataset names to process. Defaults to all.")
-    parser.add_argument("--folds", nargs="*", type=int, default=[5, 10],
-                        help="Which split sizes to generate (default: 5 10).")
+    parser.add_argument("--folds", nargs="*", type=int, default=[10],
+                        help="Which split sizes to generate (default: 10).")
     args = parser.parse_args()
 
     datasets = args.datasets or sorted(

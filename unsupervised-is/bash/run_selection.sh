@@ -1,7 +1,7 @@
 cd $WORKDIR
 
 datain="/data/bernardolemos/datasets"
-out="/data/bernardolemos/results/instance_selection"
+out="${RESULTS_DIR}/instance_selection"
 
 mkdir -p $out
 mkdir -p "resources/logs"

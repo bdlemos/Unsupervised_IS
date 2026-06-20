@@ -17,7 +17,7 @@ DEFAULT_METHODS="no-is,biois,perplexity-is,autoencoder-is,gmm-is,adaptive-perple
 
 # Discover datasets automatically and sort them by the size of their texts.txt
 export DATASETS_DIR="/data/bernardolemos/datasets"
-export RESULTS_DIR="/data/bernardolemos/results"
+
 
 if [[ -d "$DATASETS_DIR" ]]; then
     DEFAULT_DATASETS="$(python3 -c "
@@ -85,6 +85,8 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+export RESULTS_DIR="/data/bernardolemos/results/$INPUT_REP"
+
 echo "Methods  : $METHODS"
 echo "Datasets : $DATASETS"
 if [[ -n "$STEPS" ]]; then
@@ -133,8 +135,8 @@ if run_step 4 metrics; then
     echo "================================================="
     cd "$ROOT_DIR/atcBench"
     source "$ROOT_DIR/venv/bin/activate"
-    mkdir -p resources/results
-    python scripts/generate_results_csv.py -o resources/results/results_from_outputs.csv
+    mkdir -p "$RESULTS_DIR/classificacao/results"
+    python scripts/generate_results_csv.py --pattern "$RESULTS_DIR/classificacao/output/*/**/measures.fold_*.json" -o "$RESULTS_DIR/classificacao/results/results_from_outputs.csv"
     deactivate
 fi
 
@@ -145,8 +147,8 @@ if run_step 5 times; then
     echo "================================================="
     cd "$ROOT_DIR/atcBench"
     source "$ROOT_DIR/venv/bin/activate"
-    mkdir -p resources/results
-    python scripts/generate_times_csv.py -o resources/results/times_from_outputs.csv
+    mkdir -p "$RESULTS_DIR/classificacao/results"
+    python scripts/generate_times_csv.py --pattern "$RESULTS_DIR/classificacao/output/*/**/measures.fold_*.json" -o "$RESULTS_DIR/classificacao/results/times_from_outputs.csv"
     deactivate
 fi
 

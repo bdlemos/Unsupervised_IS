@@ -12,8 +12,8 @@ from src.main.python.iSel.base import InstanceSelectionMixin
 def _cluster_removal_rates(
     X: np.ndarray,
     n_clusters: int = 30,
-    rate_min: float = 0.02,
-    rate_max: float = 0.75,
+    rate_min: float = 0.05,
+    rate_max: float = 0.6,
     random_state: int = 0,
 ) -> tuple:
     """Derive a removal rate for each cluster from its relative size.
@@ -163,7 +163,7 @@ class AdaptiveClusterIS(InstanceSelectionMixin):
             return gmm_is.GMMIS(random_state=self.random_state, **kwargs)
 
         elif self.base_method == "perplexity":
-            kwargs.setdefault("n_topics", 10)
+            kwargs.setdefault("n_topics", 30)
             return perplexity_is.PerplexityIS(random_state=self.random_state, **kwargs)
 
         raise ValueError(f"Unknown base_method='{self.base_method}'")
