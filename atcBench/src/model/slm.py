@@ -1,391 +1,273 @@
-
-from sklearn.base import BaseEstimator, ClassifierMixin
-from src.utils.misc import Documents, Classes
-import torch
-import numpy as np
+import io
 import time
-from tqdm import tqdm
+from typing import Any, Optional
+
+import numpy as np
+import torch
+from sklearn.base import BaseEstimator, ClassifierMixin
 from torch.optim import Adam
-from transformers import AutoModelForSequenceClassification
-from transformers import AutoTokenizer
-from src.model.slmdatahandle import prepare_training_datasets, prepare_inference_datasets, prep_data #
+from torch.utils.data import DataLoader
+from transformers import (
+    AutoModelForSequenceClassification,
+    AutoTokenizer,
+    get_linear_schedule_with_warmup,
+)
+from tqdm import tqdm
+
+from src.model.slmdatahandle import prepare_inference_datasets, prepare_training_datasets, prep_data
+from src.utils.misc import Classes, Documents
+
 
 class SLMClassifier(BaseEstimator, ClassifierMixin):
 
-    def __init__(self, model_config, dataset):
-
+    def __init__(self, model_config: dict[str, Any], dataset: str) -> None:
         self.model_config = model_config
         self.dataset = dataset
-        self.model_name = model_config['model_name'] #deepmethod
-        self.model_tag = model_config['model_tag'] #
-        #self.models_path = models_path
-        self.max_len = model_config['training_args']['max_len']
-        self.learning_rate = model_config['training_args']['lr'] #learning_rate
-        self.batch_size = model_config['training_args']['batch_size'] #batch_num
-        self.num_max_epochs = model_config['training_args']['num_max_epochs'] #max_iter
-        self.max_patience = model_config['training_args']['patience'] #max_patience
+        self.model_name: str = model_config['model_name']
+        self.model_tag: str = model_config['model_tag']
+        self.max_len: int = model_config['training_args']['max_len']
+        self.learning_rate: float = model_config['training_args']['lr']
+        self.batch_size: int = model_config['training_args']['batch_size']
+        self.num_max_epochs: int = model_config['training_args']['num_max_epochs']
+        self.max_patience: int = model_config['training_args']['patience']
+        self.weight_decay_rate: float = model_config['training_args']['weight_decay_rate']
+        self.min_val_epoch_impro_delta: float = model_config['training_args']['min_val_epoch_impro_delta']
+        self.max_grad_norm: float = model_config['training_args']['max_grad_norm']
+        self.warmup_ratio: float = model_config['training_args'].get('warmup_ratio', 0.06)
 
-        self.weight_decay_rate = model_config['training_args']['weight_decay_rate']
-        self.min_val_epoch_impro_delta = model_config['training_args']['min_val_epoch_impro_delta']
-        self.max_grad_norm = model_config['training_args']['max_grad_norm']
+        self.full_finetuning: bool = True
+        self.epoch_id: int = 0
+        self.logging_dir: str = f"logs/{self.model_tag}/{self.dataset}/"
+        print(f"[init] logging dir: {self.logging_dir}")
 
-        #weight_decay_rate: float = 0.01, 
-        #learning_rate: float = 5e-5, 
-        #save_rep: bool = False,
-        #min_val_epoch_impro_delta: float = 1e-4,
-
-        self.full_finetuning = True
-        self.epoch_id = 0
-
-        self.logging_dir = f"logs/{self.model_tag}/{self.dataset}/"
-        print(self.logging_dir)
-
-    def load_model(self, model_name, num_training_labels):
-
-        print("Loading model...")
-
+    def load_model(
+        self,
+        model_name: str,
+        num_training_labels: int,
+    ) -> tuple[AutoModelForSequenceClassification, AutoTokenizer]:
+        print(f"[load] loading model '{model_name}' ({num_training_labels} labels)...")
         model = AutoModelForSequenceClassification.from_pretrained(
-            model_name, 
-            num_labels=num_training_labels, 
-            torch_dtype="auto", 
-            device_map="auto", 
+            model_name,
+            num_labels=num_training_labels,
+            torch_dtype="auto",
+            device_map="auto",
         )
 
-        #@TODO Tem varias variacoes aqui
-        # Load model tokenizer with the user authentication token
-        #tokenizer = AutoTokenizer.from_pretrained(model_name, use_auth_token = True)
-        print("Loading tokenizer...")
-        tokenizer = AutoTokenizer.from_pretrained(model_name,
-                                                  do_lower_case=False,
-                                                  max_length = self.max_len)
+        print(f"[load] loading tokenizer (max_len={self.max_len})...")
+        tokenizer = AutoTokenizer.from_pretrained(
+            model_name,
+            do_lower_case=False,
+            max_length=self.max_len,
+        )
 
-        # Set padding token as EOS token
-        #@TODO
-        if self.model_tag == 'roberta' or self.model_tag == 'bart':
+        if self.model_tag in ('roberta', 'bart'):
             tokenizer.add_prefix_space = True
 
-        print("Model loaded!")
-
+        print("[load] model and tokenizer ready.")
         return model, tokenizer
 
-
-    def fit(self, X_train: Documents, y_train: Classes, X_val: Documents = None, y_val: Classes = None):
-        """Fine-tuning of the pre-trained XLNet model.
+    def fit(
+        self,
+        X_train: Documents,
+        y_train: Classes,
+        X_val: Optional[Documents] = None,
+        y_val: Optional[Classes] = None,
+    ) -> "SLMClassifier":
+        """Fine-tuning of the pre-trained model.
 
         Parameters
         ----------
-        :param X: Documents
-            Documents for training.
-        :param y: Classes
-            Classes for each document in training.
+        X_train : Documents
+        y_train : Classes
+        X_val : Documents, optional
+        y_val : Classes, optional
         """
-        gpu_id = 0
-        self.device = torch.device(f'cuda:{gpu_id}')
+        self.device = torch.device('cuda:0')
 
         X_train, y_train, X_val, y_val = prep_data(X_train, y_train, X_val, y_val)
+        self.num_classes: int = len(set(y_train))
 
-        self.num_classes = len(list(set(y_train)))
-        print(self.num_classes)
-
-        #self.set_model() 
-        self._time_to_train = time.time()
-
-        # Load model from Hugging Face with model name
-        self.model, self.tokenizer = self.load_model(self.model_name, 
-                                                     num_training_labels=self.num_classes)
-
-        print(self.model_name)
-
-        # Send pre-trained model to GPU
+        self._time_to_train: float = time.time()
+        self.model, self.tokenizer = self.load_model(self.model_name, num_training_labels=self.num_classes)
         self.model.to(self.device)
 
-        self.training_loss = []
-        self.validation_loss = []
-        patience = 0
-        best_loss = None
-        
-        data_loader_train, data_loader_val = prepare_training_datasets(X_train, y_train, 
-                                                                       X_val, y_val, 
-                                                                       self.tokenizer, self.max_len, 
-                                                                       self.batch_size)
+        self.training_loss: list[float] = []
+        self.validation_loss: list[float] = []
+        patience: int = 0
+        best_loss: Optional[float] = None
+        best_weights: Optional[bytes] = None
 
-        # Training the model
+        data_loader_train, data_loader_val = prepare_training_datasets(
+            X_train, y_train, X_val, y_val, self.tokenizer, self.max_len, self.batch_size
+        )
+
         optimizer = self._set_optimizer()
 
+        total_steps = len(data_loader_train) * self.num_max_epochs
+        warmup_steps = int(total_steps * self.warmup_ratio)
+        scheduler = get_linear_schedule_with_warmup(
+            optimizer,
+            num_warmup_steps=warmup_steps,
+            num_training_steps=total_steps,
+        )
+
+        print(f"\n[fit] model={self.model_name} | classes={self.num_classes} | epochs={self.num_max_epochs} | patience={self.max_patience}")
+        print(f"[fit] lr={self.learning_rate:.1e} | warmup={warmup_steps} steps ({self.warmup_ratio*100:.0f}% of {total_steps})")
+        print("-" * 70)
+
         while self.epoch_id < self.num_max_epochs:
-            # Info
             self.epoch_id += 1
+            print(f"\n[epoch {self.epoch_id}/{self.num_max_epochs}]")
 
+            # --- train ---
             self.model.train()
-            #self.model.train(False)
+            tr_loss, nb_tr_steps = 0.0, 0
 
-
-            print(f'epoch: {self.epoch_id}')
-
-            tr_loss = 0
-            nb_tr_steps = 0
-
-            # for batch in tqdm(data_loader_train, desc="Train"):
             for batch in data_loader_train:
-                # Add batch to GPU
-                #batch = tuple(t.to(self.device) for t in batch)
-                #b_input_ids, b_input_mask, b_segs, b_labels = batch
-
-                # Forward pass
-                '''
-                all labels=labels
-                'xlnet':input_ids=b_input_ids, token_type_ids=b_segs, input_mask=b_input_mask
-                'roberta' or 'gpt2': input_ids=input_ids, attention_mask=attention_mask
-                'transfoxl': input_ids=input_ids
-                '''
-                batch = {k:v.type(torch.long).to(self.device) for k,v in batch.items()}
+                batch = {k: v.type(torch.long).to(self.device) for k, v in batch.items()}
                 outputs = self.model(**batch)
-                loss, logits = outputs[:2]
+                loss, _ = outputs[:2]
 
-                # Backward pass
                 loss.backward()
-
-                # Track train loss
                 tr_loss += loss.item()
                 nb_tr_steps += 1
 
-                # Gradient clipping
-                torch.nn.utils.clip_grad_norm_(parameters=self.model.parameters(),
-                                               max_norm=self.max_grad_norm)
-
-                # Update parameters
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=self.max_grad_norm)
                 optimizer.step()
+                scheduler.step()
                 optimizer.zero_grad()
 
-            # Print train loss per epoch
-            self.training_loss.append(tr_loss / nb_tr_steps)
-            #logging.info(f'train loss: {tr_loss / nb_tr_steps:.4E}')
-            print(f'train loss: {tr_loss / nb_tr_steps:.4E}')
+            epoch_train_loss = tr_loss / nb_tr_steps
+            self.training_loss.append(epoch_train_loss)
 
-            #Calcular loss na validacao aqui
+            # --- validate ---
             self.model.eval()
+            vl_loss, nb_vl_steps = 0.0, 0
 
-            vl_loss = 0
-            nb_vl_steps = 0
-            #for step, batch in tqdm(enumerate(data_loader_val), desc = "Val"):
-            # for batch in tqdm(data_loader_val, desc = "Val"):
             for batch in data_loader_val:
-                # Add batch to GPU
-                #batch = tuple(t.to(self.device) for t in batch)
-                #b_input_ids, b_input_mask, b_segs, b_labels = batch
-
+                batch = {k: v.type(torch.long).to(self.device) for k, v in batch.items()}
                 with torch.no_grad():
-                    # Forward pass
-                    '''
-                    all labels=labels
-                    'xlnet':input_ids=b_input_ids, token_type_ids=b_segs, input_mask=b_input_mask
-                    'roberta' or 'gpt2': input_ids=input_ids, attention_mask=attention_mask
-                    'transfoxl': input_ids=input_ids
-                    '''
-                    batch = {k:v.type(torch.long).to(self.device) for k,v in batch.items()}
                     outputs = self.model(**batch)
-                    loss, logits = outputs[:2]
-
+                    loss, _ = outputs[:2]
                 vl_loss += loss.item()
                 nb_vl_steps += 1
 
             dev_loss = vl_loss / nb_vl_steps
-            
-            if best_loss is None or \
-                dev_loss + self.min_val_epoch_impro_delta < best_loss:
-                
-                best_loss = dev_loss
-                print('val best loss updated: {:.4f}'.format(best_loss))
-                #removed for big datasets: now patience dont need to be consective
-                #patience = 0
-            else:
-                for param_group in optimizer.param_groups:
-                    print(param_group['lr'])
-                
-                new_lr = optimizer.param_groups[0]['lr']/2
-                #optimizer.set_learning_rate(new_lr)
-                for g in optimizer.param_groups:
-                    g['lr'] = new_lr
-                                
-                print('patience #{}: reducing the lr to {}'.format(patience, new_lr))
-                if patience == self.max_patience:
-                    break
-                patience+=1
-
-            # Print train loss per epoch
-            #logging.info(f'val loss: {dev_loss:.4E}')
-            print(f'val loss: {dev_loss:.4E}')
             self.validation_loss.append(dev_loss)
 
-        #if self.save_model: 
-        #    self.model.save_pretrained(f'{self.out_dir}')
+            current_lr = scheduler.get_last_lr()[0]
+            print(f"  train loss : {epoch_train_loss:.4E}")
+            print(f"  val loss   : {dev_loss:.4E}  |  lr: {current_lr:.2e}")
+
+            # --- checkpoint / patience ---
+            if best_loss is None or dev_loss + self.min_val_epoch_impro_delta < best_loss:
+                best_loss = dev_loss
+                buffer = io.BytesIO()
+                torch.save(self.model.state_dict(), buffer)
+                best_weights = buffer.getvalue()
+                print(f"  checkpoint : val loss improved → {best_loss:.4E} (saved)")
+            else:
+                print(f"  patience   : {patience}/{self.max_patience}")
+                if patience == self.max_patience:
+                    print(f"\n[fit] early stopping triggered at epoch {self.epoch_id}.")
+                    break
+                patience += 1
+
+        print("-" * 70)
+        if best_weights is not None:
+            buffer = io.BytesIO(best_weights)
+            self.model.load_state_dict(torch.load(buffer, map_location=self.device))
+            print(f"[fit] best weights restored (val loss: {best_loss:.4E})")
 
         self._time_to_train = time.time() - self._time_to_train
-
+        print(f"[fit] training complete in {self._time_to_train:.1f}s")
         return self
 
+    def softmax(self, x: np.ndarray) -> np.ndarray:
+        return np.exp(x) / np.sum(np.exp(x), axis=1, keepdims=True)
 
-    def softmax(self, x):
-        return np.exp(x)/np.sum(np.exp(x),axis=1, keepdims=True)
-
-    def predict_proba(self, X: Documents):
-        """Class probability prediction for new documents (using the fitted model).
+    def predict_proba(self, X: Documents) -> np.ndarray:
+        """Class probability prediction for new documents.
 
         Parameters
         ----------
-        :param X: Documents
-            Documents for prediction.
+        X : Documents
 
         Returns
-        ----------
-        :return y_pred: numpy.ndarray
-            Class probability predictions for each document in X.
+        -------
+        proba : np.ndarray of shape (n_samples, n_classes)
         """
-        # Generating test DataLoader
-        #data_loader = self._generate_data_loader(X=X, partition='test') #training=False)
-        #test_encodings = self.tokenizer(X, truncation=True, padding='max_length', max_length=self.max_len)
-        #test_dataset = CustomDataset(test_encodings, n_test = len(X))
-        #sampler_test = SequentialSampler(test_dataset)
-        #data_loader_test = DataLoader(test_dataset, sampler = sampler_test, batch_size=self.batch_num, drop_last=False)
-        self._time_to_predict = time.time()
+        self._time_to_predict: float = time.time()
+        data_loader_test: DataLoader = prepare_inference_datasets(X, self.tokenizer, self.max_len, self.batch_size)
 
-        data_loader_test = prepare_inference_datasets(X, self.tokenizer, self.max_len, self.batch_size)
-
-        # Evalue loop
         self.model.eval()
+        torch_logits: list[np.ndarray] = []
 
-        #y_pred = []
-        torch_logits = []
-        #for step, batch in tqdm(enumerate(data_loader), desc="Test"):
-        # for batch in tqdm(data_loader_test, desc="Test"):
         for batch in data_loader_test:
-            #batch = tuple(t.to(self.device) for t in batch)
-            #b_input_ids, b_input_mask, b_segs = batch
-
+            batch = {k: v.type(torch.long).to(self.device) for k, v in batch.items()}
             with torch.no_grad():
-                '''
-                'xlnet':input_ids=b_input_ids, token_type_ids=b_segs, input_mask=b_input_mask
-                'roberta' or 'gpt2': input_ids=input_ids, attention_mask=attention_mask
-                'transfoxl': input_ids=input_ids
-                '''
-                batch = {k:v.type(torch.long).to(self.device) for k,v in batch.items()}
                 outputs = self.model(**batch)
                 logits = outputs[0]
+            torch_logits.append(logits.detach().cpu().numpy())
 
-
-            # Predictions
-            logits = logits.detach().cpu().numpy()
-            #y_pred.append(logits)
-            torch_logits.append(logits)
-
-        #y_pred = np.concatenate(y_pred)
-        torch_logits = np.concatenate(torch_logits)
-        #print(torch_logits[:10])
-
-        proba = self.softmax(torch_logits)
-        #print(proba[:10])
-
+        proba = self.softmax(np.concatenate(torch_logits))
         self._time_to_predict = time.time() - self._time_to_predict
-
-        #return y_pred
         return proba
-    
-    #@TODO REFAZER
-    def representation(self, X: Documents):
-        """Prediction for new documents (using the fitted model).
+
+    def representation(self, X: Documents) -> list[list[float]]:
+        """Extract document representations from the fitted model.
 
         Parameters
         ----------
-        :param X: Documents
-            Documents for prediction.
+        X : Documents
 
         Returns
-        ----------
-        :return y_pred: numpy.ndarray
-            Predictions for each document in X.
+        -------
+        rep_list : list[list[float]]
         """
-        # Generating DataLoader
-        #data_loader = self._generate_data_loader(X=X, partition="test") #training=False)
+        data_loader_test: DataLoader = prepare_inference_datasets(X, self.tokenizer, self.max_len, self.batch_size)
 
-        #test_encodings = self.tokenizer(
-        #    X, truncation=True, padding='max_length', max_length=self.max_len)
-        #test_dataset = CustomDataset(test_encodings, n_test=len(X))
-        #sampler_test = SequentialSampler(test_dataset)
-        #data_loader_test = DataLoader(
-        #    test_dataset, sampler=sampler_test, batch_size=self.batch_num, drop_last=False)
-        ##data_loader_test = DataLoader(
-        ##	test_dataset, shuffle=False, batch_size=self.batch_num, drop_last=False)
-
-        data_loader_test = prepare_inference_datasets(X, self.tokenizer, self.max_len, self.batch_size)
-
-        # Evalue loop
         self.model.eval()
+        rep_list: list[list[float]] = []
 
-        rep_list = []
-        #for step, batch in tqdm(enumerate(data_loader), desc="Test"):
-        for batch in tqdm(data_loader_test, desc="Representation"):
-            #batch = tuple(t.to(self.device) for t in batch)
-            #b_input_ids, b_input_mask, b_segs = batch
-
+        for batch in tqdm(data_loader_test, desc="[representation]"):
+            batch = {k: v.type(torch.long).to(self.device) for k, v in batch.items()}
             with torch.no_grad():
-                '''
-                'xlnet':input_ids=b_input_ids, token_type_ids=b_segs, input_mask=b_input_mask
-                'roberta' or 'gpt2': input_ids=input_ids, attention_mask=attention_mask
-                'transfoxl': input_ids=input_ids
-                '''
-                batch = {k: v.type(torch.long).to(self.device) for k, v in batch.items()}
                 if self.model_tag == 'bert':
-                    #outputs = self.model(**batch)
-                    #print(outputs)
                     outputs = self.model.bert(**batch)['pooler_output']
-                if self.model_tag == 'roberta':
+                elif self.model_tag == 'roberta':
                     outputs = self.model.roberta(**batch)['last_hidden_state']
-                if self.model_tag == 'bart':
-                    outputs = self.model(**batch)
-                    #print(len(outputs))
-                    outputs = outputs.encoder_last_hidden_state
-                
+                elif self.model_tag == 'bart':
+                    outputs = self.model(**batch).encoder_last_hidden_state
 
             outputs = outputs.cpu().detach().numpy().tolist()
-            #doc = {'id' : ids_train[index_doc], 'bert' : outputs, 'label' : label.numpy().tolist()[0]}
-            
             for out in outputs:
-                
-                if self.model_tag == 'roberta' or self.model_tag == 'bart':
-                    out = np.mean(out, 0).tolist()
-
+                if self.model_tag in ('roberta', 'bart'):
+                    out = np.mean(out, axis=0).tolist()
                 rep_list.append(out)
 
         return rep_list
 
-    def score(self, X, y, sample_weight=None):
+    def score(self, X: Documents, y: Classes, sample_weight: Optional[np.ndarray] = None) -> None:
         pass
 
     def _set_optimizer(self) -> Adam:
-        """Setting the optimizer for the fit method.
-
-        Returns
-        ----------
-        :return optimizer: Adam
-            The Adam optimizer from torch.optim.
-        """
+        """Build the Adam optimizer with optional weight decay separation."""
         if self.full_finetuning:
-            # Fine tune all layer parameters of the pre-trained model
             param_optimizer = list(self.model.named_parameters())
             no_decay = ['bias', 'gamma', 'beta']
             optimizer_grouped_parameters = [
-                {'params': [p for n, p in param_optimizer if not any(nd in n for nd in no_decay)],
-                 'weight_decay_rate': self.weight_decay_rate},
-                {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)],
-                 'weight_decay_rate': 0.0}
+                {
+                    'params': [p for n, p in param_optimizer if not any(nd in n for nd in no_decay)],
+                    'weight_decay_rate': self.weight_decay_rate,
+                },
+                {
+                    'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)],
+                    'weight_decay_rate': 0.0,
+                },
             ]
         else:
-            # Only fine tune classifier parameters
             param_optimizer = list(self.model.classifier.named_parameters())
-            optimizer_grouped_parameters = [
-                {'params': [p for n, p in param_optimizer]}
-            ]
+            optimizer_grouped_parameters = [{'params': [p for _, p in param_optimizer]}]
 
-        optimizer = Adam(optimizer_grouped_parameters, lr=self.learning_rate)
-
-        return optimizer
+        return Adam(optimizer_grouped_parameters, lr=self.learning_rate)
