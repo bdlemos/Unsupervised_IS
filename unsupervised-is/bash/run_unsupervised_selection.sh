@@ -50,7 +50,7 @@ datain="/data/bernardolemos/datasets"
 out="${RESULTS_DIR}/instance_selection"
 
 mkdir -p "$out"
-mkdir -p "resources/logs"
+mkdir -p "$out/logs"
 
 echo "Methods  : ${methods[*]}"
 echo "Datasets : ${datasets[*]}"
@@ -58,7 +58,7 @@ echo "Datasets : ${datasets[*]}"
 for dataset in "${datasets[@]}"; do
     echo "Dataset: $dataset"
     for method in "${methods[@]}"; do
-        echo "  Method: $method"
-        python scripts/run_generateSplit.py -d "$dataset" -m "$method" --datain "$datain" --out "$out" --inputrep "$INPUT_REP_ARG"
+        echo "  Iniciando $dataset e $method (Log: $out/logs/${dataset}_${method}.log)"
+        python scripts/run_generateSplit.py -d "$dataset" -m "$method" --datain "$datain" --out "$out" --inputrep "$INPUT_REP_ARG" > "$out/logs/${dataset}_${method}.log" 2>&1
     done
 done

@@ -16,8 +16,8 @@ from src.main.python.iSel import random_is, no_is, adaptive_is, adaptive_v2_is, 
 import socket
 
 import logging
-import logging.config
 
+logging.basicConfig(level=logging.INFO, format='%(message)s')
 logger = logging.getLogger(__name__)
 
 beta = 0.60
