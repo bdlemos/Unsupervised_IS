@@ -66,17 +66,18 @@ export PYTHON_BIN
 combos=()
 for dataset in "${datasets[@]}"; do
   for method in "${methods[@]}"; do
-    combos+=("${dataset}_${method}")
+    combos+=("${dataset}|${method}")
   done
 done
 
-# Cria uma pasta para separar os logs e não bagunçar
-mkdir -p logs
-
 # Usa xargs para gerenciar o pool de processos (workers)
 printf "%s\n" "${combos[@]}" | xargs -n 1 -P "$NUM_PROCESSES" -I {} bash -c '
-  combo="{}"
-  log_file="logs/run_${combo}.log"
+  IFS="|" read -r dataset method <<< "{}"
+  combo="${dataset}_${method}"
+  log_dir="${RESULTS_DIR:-/data/bernardolemos/results}/classificacao/logs/${dataset}"
+  mkdir -p "$log_dir"
+  log_file="$log_dir/${method}.log"
+  
   echo "[RUN] Iniciando $combo (Acompanhe os detalhes em $log_file)"
   
   # Redireciona o stdout e stderr deste script especifico para o arquivo de log dele

@@ -93,7 +93,7 @@ class BIOIS(InstanceSelectionMixin):
 
         
     def fitting_alpha(self, X, y):
-        print('fitting_alpha_by_lr_default')
+        # print('fitting_alpha_by_lr_default')
         # Setting the approximated KNN solution
         #classifier = NMSlibKNNClassifier(n_neighbors=10, n_jobs=10)
         #classifier.fit(X, y)
@@ -115,7 +115,7 @@ class BIOIS(InstanceSelectionMixin):
             X_val, y_val = X[val_index], y[val_index]
 
             classifier = LogisticRegression(C=1.0,solver='lbfgs')
-            print(classifier)
+            # print(classifier)
             classifier.fit(X_train, y_train)
 
             probas = classifier.predict_proba(X_val)
@@ -140,7 +140,7 @@ class BIOIS(InstanceSelectionMixin):
 
         if f1_score(y, pred,average='micro') < self.beta:
             #raise ValueError("ERROR. LR accuracy < beta")
-            print("ERROR. LR accuracy < beta")
+            # print("ERROR. LR accuracy < beta")
 
         # Setting the removal probability of wrong predicted instances as zero
         correctPredictedProba = copy.copy(y_proba_of_pred)
@@ -155,7 +155,7 @@ class BIOIS(InstanceSelectionMixin):
         return correctPredictedProba
     
     def identifyNoiseByLowerNNEntropy(self, X, y):
-        print("identifyNoiseByLowerNNEntropy")
+        # print("identifyNoiseByLowerNNEntropy")
         wrongpredictedIdx = y != self._pred
        
         nnentropy = [stats.entropy(_) for _ in self._probaEveryone[wrongpredictedIdx]]
@@ -203,13 +203,13 @@ class BIOIS(InstanceSelectionMixin):
         if columns_diff:
             for c in columns_diff:
                 if c == 0:
-                    print("primeira coluna")
+                    # print("primeira coluna")
                     probas = np.c_[np.zeros(n_instances), probas]
                 elif c == max_y_train:
-                    print("ultima coluna")
+                    # print("ultima coluna")
                     probas = np.c_[probas, np.zeros(n_instances)]
                 else:
-                    print("coluna meio")
+                    # print("coluna meio")
                     probas = np.c_[probas[:,:c], np.zeros(n_instances), probas[:,c:]]
         
         return probas
