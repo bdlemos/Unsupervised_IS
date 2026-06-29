@@ -141,6 +141,7 @@ class BIOIS(InstanceSelectionMixin):
         if f1_score(y, pred,average='micro') < self.beta:
             #raise ValueError("ERROR. LR accuracy < beta")
             # print("ERROR. LR accuracy < beta")
+            pass
 
         # Setting the removal probability of wrong predicted instances as zero
         correctPredictedProba = copy.copy(y_proba_of_pred)

@@ -8,6 +8,7 @@ import torch
 from pathlib import Path
 from sklearn.datasets import dump_svmlight_file
 from transformers import AutoModel
+from tqdm import tqdm
 
 
 import torch
@@ -16,7 +17,7 @@ DATASETS_BASE = Path("/data/bernardolemos/datasets")
 MODEL_ID = "jinaai/jina-embeddings-v5-text-small"
 REPR_DIR = "jina-v5"
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-BATCH_SIZE = 16
+BATCH_SIZE = 8
 TRUNCATE_DIM = 256
 DTYPE = torch.bfloat16
 
@@ -39,7 +40,7 @@ def load_split(split_csv: Path) -> list[tuple[list[int], list[int]]]:
 
 def encode_texts(model, texts: list[str]) -> np.ndarray:
     all_embeddings = []
-    for start in range(0, len(texts), BATCH_SIZE):
+    for start in tqdm(range(0, len(texts), BATCH_SIZE),desc="Encoding texts"):
         batch = texts[start : start + BATCH_SIZE]
         with torch.no_grad():
             emb = model.encode(
@@ -79,35 +80,24 @@ def process_dataset(dataset_path: Path, model, n_folds: int):
 
     splits = load_split(split_csv)
 
+    print(f"  [{dataset_path.name}] encoding {len(texts)} texts once ...")
+    t_encode_start = time.time()
+    all_embeddings = encode_texts(model, texts)
+    encode_time = time.time() - t_encode_start
+
     fold_times = []
-    encode_times = []
-
     for fold, (train_idx, test_idx) in enumerate(splits):
-        print(f"  [{dataset_path.name}] fold={fold} ...")
-        train_texts = [texts[i] for i in train_idx]
-        test_texts = [texts[i] for i in test_idx]
-        train_labels = labels[train_idx]
-        test_labels = labels[test_idx]
-
         t0 = time.time()
-        train_emb = encode_texts(model, train_texts)
-        test_emb = encode_texts(model, test_texts)
-        encode_time = time.time() - t0
-        encode_times.append(encode_time)
-
-        t1 = time.time()
-        save_svmlight_gz(train_emb, train_labels, out_dir / f"train{fold}.gz")
-        save_svmlight_gz(test_emb, test_labels, out_dir / f"test{fold}.gz")
+        save_svmlight_gz(all_embeddings[train_idx], labels[train_idx], out_dir / f"train{fold}.gz")
+        save_svmlight_gz(all_embeddings[test_idx], labels[test_idx], out_dir / f"test{fold}.gz")
         fold_times.append(time.time() - t0)
 
     times_path = out_dir / "times.csv"
-    encode_row = " ".join(f"{t}" for t in encode_times)
-    total_row = " ".join(f"{t}" for t in fold_times)
     with open(times_path, "w") as f:
-        f.write(encode_row + "\n")
-        f.write(total_row + "\n")
+        f.write(f"{encode_time}\n")
+        f.write(" ".join(str(t) for t in fold_times) + "\n")
 
-    print(f"  [{dataset_path.name}] fold={n_folds} done — avg encode {np.mean(encode_times):.2f}s/fold")
+    print(f"  [{dataset_path.name}] n_folds={n_folds} done — encode {encode_time:.2f}s total")
 
 
 def load_model() -> AutoModel:
