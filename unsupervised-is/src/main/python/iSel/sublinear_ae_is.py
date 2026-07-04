@@ -31,7 +31,8 @@ Core Idea
    centroid (which fails if an ultra-minority instance happens to be in the center), 
    we sort instances by their Autoencoder Reconstruction Error. We remove the 
    instances with the **lowest** errors (the most redundant) and keep those with 
-   the **highest** errors.
+   the **highest** errors (the rarest/most boundary-like) - probabilistically 
+   based on the inverse of the reconstruction error.
 
 This ensures that even if an extreme long-tail class (e.g., 2 instances) falls 
 into a massive majority micro-cluster, its Autoencoder error will be extremely 
@@ -168,14 +169,24 @@ class SublinearAEIS(InstanceSelectionMixin):
             remove_count = s_c - keep_count
             
             if remove_count > 0:
-                # Sort cluster instances by Autoencoder Score (ascending: lowest error first)
                 c_scores = scores[cluster_idx]
                 
-                # We want to REMOVE instances with the LOWEST error (highly predictable/redundant)
-                # We want to KEEP instances with the HIGHEST error (rare/boundary)
-                sorted_indices = cluster_idx[np.argsort(c_scores)]
+                # Invert the scores so that LOW errors have HIGH probabilities of removal
+                # We add a small epsilon to avoid division by zero
+                inv_scores = 1.0 / (c_scores + 1e-8)
                 
-                to_remove = sorted_indices[:remove_count]
+                # Normalize to create a probability distribution
+                p_remove = inv_scores / np.sum(inv_scores)
+                
+                # Sample the instances to remove probabilistically without replacement
+                to_remove_local = np.random.choice(
+                    len(cluster_idx),
+                    size=remove_count,
+                    replace=False,
+                    p=p_remove
+                )
+                
+                to_remove = cluster_idx[to_remove_local]
                 mask[to_remove] = False
 
         # ------------------------------------------------------------------
