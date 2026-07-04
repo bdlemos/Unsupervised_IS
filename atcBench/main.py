@@ -10,7 +10,8 @@ from src.model.general import getClassifier
 
 KNOWN_METHODS = [
     "autoencoder-is", "perplexity-is", "random-is", "gmm-is", "biois", "random",
-    "no-is", "adaptive-perplexity", "adaptive-v2-perplexity", "adaptive-cluster-is"
+    "no-is", "adaptive-perplexity", "adaptive-v2-perplexity", "adaptive-cluster-is",
+    "sublinear-ae-is"
 ]
 
 
