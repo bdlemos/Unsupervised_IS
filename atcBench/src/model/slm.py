@@ -162,9 +162,9 @@ class SLMClassifier(BaseEstimator, ClassifierMixin):
             # --- checkpoint / patience ---
             if best_loss is None or dev_loss + self.min_val_epoch_impro_delta < best_loss:
                 best_loss = dev_loss
-                buffer = io.BytesIO()
-                torch.save(self.model.state_dict(), buffer)
-                best_weights = buffer.getvalue()
+                # buffer = io.BytesIO()
+                # torch.save(self.model.state_dict(), buffer)
+                # best_weights = buffer.getvalue()
                 print(f"  checkpoint : val loss improved → {best_loss:.4E} (saved)")
             else:
                 print(f"  patience   : {patience}/{self.max_patience}")
@@ -173,11 +173,12 @@ class SLMClassifier(BaseEstimator, ClassifierMixin):
                     break
                 patience += 1
 
-        print("-" * 70)
-        if best_weights is not None:
-            buffer = io.BytesIO(best_weights)
-            self.model.load_state_dict(torch.load(buffer, map_location=self.device))
-            print(f"[fit] best weights restored (val loss: {best_loss:.4E})")
+        # Desativado até segunda ordem.
+        # print("-" * 70)
+        # if best_weights is not None:
+        #     buffer = io.BytesIO(best_weights)
+        #     self.model.load_state_dict(torch.load(buffer, map_location=self.device))
+        #     print(f"[fit] best weights restored (val loss: {best_loss:.4E})")
 
         self._time_to_train = time.time() - self._time_to_train
         print(f"[fit] training complete in {self._time_to_train:.1f}s")

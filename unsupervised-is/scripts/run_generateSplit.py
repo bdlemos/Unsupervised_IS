@@ -11,7 +11,8 @@ import os
 import pandas as pd
 from collections import Counter
 from src.main.python.iSel import perplexity_is, biois, autoencoder_is, iforest_is, gmm_is, cluster_is
-from src.main.python.iSel import random_is, no_is, adaptive_is, adaptive_v2_is, adaptive_cluster_is
+from src.main.python.iSel import random_is, no_is, adaptive_is, adaptive_v2_is, adaptive_cluster_is, sublinear_ae_is
+from src.main.python.iSel import entropy_sublinear_ae_is
 
 import socket
 
@@ -34,10 +35,7 @@ def get_selector(method: str):
 
     #unsupervised
     if method == 'perplexity-is': return perplexity_is.PerplexityIS(n_topics=10, low_percentile=low_percentile, high_percentile=high_percentile, beta=beta, theta=theta)
-    if method == 'pca-autoencoder-is': return PCAutoencoder_is.PCAutoencoderIS(
-                                                                        n_epochs=20, batch_size=64, bottleneck_ratio=0.05,
-                                                                        beta=beta, theta=theta, low_percentile=low_percentile, high_percentile=high_percentile
-                                                                    )
+ 
     if method == 'autoencoder-is': return autoencoder_is.AutoencoderIS(
                                                                         n_epochs=20, batch_size=64, bottleneck_ratio=0.05,
                                                                         beta=beta, theta=theta, low_percentile=low_percentile, high_percentile=high_percentile
@@ -54,6 +52,24 @@ def get_selector(method: str):
     # Adaptive cluster-based IS — clusters are formed in the original feature space, and then the adaptive strategy is applied within each cluster.
     if method == 'adaptive-cluster-is': return adaptive_cluster_is.AdaptiveClusterIS(base_method='autoencoder', n_clusters=30)
 
+    # I think it can be my master piece
+    if method == 'sublinear-ae-is': return sublinear_ae_is.SublinearAEIS(
+        target_reduction=0.35, # target 35% reduction
+        n_clusters=200,        # many micro-clusters
+        gamma=0.5,             # square-root sublinear sampling
+        ae_epochs=50,          # autoencoder epochs
+        random_state=13
+    )
+
+    # Entropy-adaptive version (zero-parameter)
+    if method == 'entropy-sublinear-ae-is': return entropy_sublinear_ae_is.EntropySublinearAEIS(
+        r_max=0.50,            # max reduction
+        alpha=15.0,            # entropy sensitivity (high due to K-Means uniform distribution)
+        n_clusters=200,        # micro-clusters
+        gamma=0.5,             # square-root sublinear
+        ae_epochs=50,          # autoencoder epochs
+        random_state=13
+    )
     return None
 
 
