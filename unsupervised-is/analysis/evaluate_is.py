@@ -1,3 +1,15 @@
+#!/usr/bin/env python3
+"""
+Evaluate the iSel algorithm on multiple imbalanced datasets.
+
+python unsupervised-is/analysis/evaluate_is.py
+
+Results are saved to
+analysis/plots/<dataset>/<plot_type>.png
+and summarized in
+analysis/summary_results.md
+
+"""
 import sys
 import os
 import numpy as np
@@ -9,7 +21,7 @@ from collections import Counter
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from src.main.python.utils.general import get_data
-from src.main.python.iSel.sublinear_ae_is import SublinearAEIS
+from src.main.python.iSel.entropy_sublinear_ae_is import EntropySublinearAEIS
 
 def evaluate_dataset(dataset_name, report_file):
     dataset_path = f'/data/bernardolemos/datasets/{dataset_name}/jina-v5/'
@@ -30,13 +42,14 @@ def evaluate_dataset(dataset_name, report_file):
     majority_class = max(orig_counts, key=orig_counts.get)
     minority_class = min(orig_counts, key=orig_counts.get)
 
-    print("\nRunning SublinearAEIS...")
-    selector = SublinearAEIS(
-        target_reduction=0.35, # target 35% reduction
-        n_clusters=200,        # many micro-clusters
-        gamma=0.5,             # square-root sublinear sampling
+    print("\nRunning EntropySublinearAEIS...")
+    selector = EntropySublinearAEIS(
+        r_max=0.50,            # max reduction
+        alpha=15.0,            # entropy sensitivity (high due to K-Means uniform distribution)
+        n_clusters=200,        # micro-clusters
+        gamma=0.5,             # square-root sublinear
         ae_epochs=50,          # autoencoder epochs
-        random_state=42
+        random_state=13
     )
 
     X_reduced, y_reduced = selector.fit_transform(X_train, y_train) if hasattr(selector, 'fit_transform') else selector.fit(X_train, y_train).X_, selector.y_
@@ -151,7 +164,7 @@ def evaluate_dataset(dataset_name, report_file):
     print("=====================================================\n")
 
 def main():
-    datasets = ['trec', 'wos5736', 'sst1', 'pang_movie', 'movie_review', 'vader_movie', 'mpqa', 'subj', 'sst2', 'yelp_reviews', 'acm', 'twitter', 'wos11967', 'webkb', 'books', '20ng']
+    datasets = ['trec', 'ohsumed', 'wos5736', 'sst1', 'pang_movie', 'movie_review', 'vader_movie', 'mpqa', 'subj', 'sst2', 'yelp_reviews', 'acm', 'twitter', 'wos11967', 'webkb', 'books', '20ng']
     report_file = os.path.join(os.path.dirname(__file__), 'summary_results.md')
 
     with open(report_file, 'w') as f:
