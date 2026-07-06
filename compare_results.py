@@ -129,8 +129,8 @@ def parse_times_csv(filepath):
             }
     return results
 
-results = parse_csv('/data/bernardolemos/results_from_outputs.csv')
-times = parse_times_csv('/data/bernardolemos/times_from_outputs.csv')
+results = parse_csv('/data/bernardolemos/results/jina-v5/classificacao/results/results_from_outputs.csv')
+times = parse_times_csv('/data/bernardolemos/results/jina-v5/classificacao/results/times_from_outputs.csv')
 
 method_names = {'entropy-sublinear-ae-is': 'ESAE-IS', 'biois': 'BIOIS', 'no-is': 'No-IS', 'autoencoder-is': 'AE-IS', 'gmm-is': 'GMM-IS', 'adaptive-perplexity': 'AP-IS', 'adaptive-cluster-is': 'AC-IS', 'sublinear-ae-is': 'SAE-IS'}
 
