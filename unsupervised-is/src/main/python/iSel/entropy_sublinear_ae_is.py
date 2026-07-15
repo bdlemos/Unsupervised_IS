@@ -40,7 +40,8 @@ from __future__ import annotations
 
 import numpy as np
 import scipy
-from sklearn.cluster import MiniBatchKMeans
+from sklearn.cluster import MiniBatchKMeans, Birch, DBSCAN
+from sklearn.mixture import GaussianMixture
 from sklearn.utils.validation import check_X_y
 
 from src.main.python.iSel.base import InstanceSelectionMixin
@@ -96,6 +97,7 @@ class EntropySublinearAEIS(InstanceSelectionMixin):
         gamma: float = 0.5,
         ae_epochs: int = 50,
         random_state: int = 0,
+        clustering_method: str = 'minibatchkmeans',
         **ae_kwargs
     ) -> None:
         self.r_max = r_max
@@ -104,6 +106,7 @@ class EntropySublinearAEIS(InstanceSelectionMixin):
         self.gamma = gamma
         self.ae_epochs = ae_epochs
         self.random_state = random_state
+        self.clustering_method = clustering_method.lower()
         self.ae_kwargs = ae_kwargs
         self.sample_indices_ = []
 
@@ -141,10 +144,30 @@ class EntropySublinearAEIS(InstanceSelectionMixin):
         # Step 2: Micro-clustering (Tessellation)
         # ------------------------------------------------------------------
         n_clusters = max(2, min(self.n_clusters, n_samples // 10))
-        print(f"[EntropySublinearAEIS] Step 2 — Tessellating into {n_clusters} micro-clusters...")
-        km = MiniBatchKMeans(n_clusters=n_clusters, random_state=self.random_state, n_init=3)
-        labels = km.fit_predict(X)
+        print(f"[EntropySublinearAEIS] Step 2 — Tessellating into {n_clusters} micro-clusters using {self.clustering_method}...")
         
+        if self.clustering_method == 'minibatchkmeans':
+            km = MiniBatchKMeans(n_clusters=n_clusters, random_state=self.random_state, n_init=3)
+            labels = km.fit_predict(X)
+        elif self.clustering_method == 'gmm':
+            gmm = GaussianMixture(n_components=n_clusters, random_state=self.random_state)
+            labels = gmm.fit_predict(X)
+        elif self.clustering_method == 'birch':
+            birch = Birch(n_clusters=n_clusters)
+            labels = birch.fit_predict(X)
+        elif self.clustering_method == 'dbscan':
+            # DBSCAN doesn't take n_clusters, we use eps and min_samples.
+            # Using reasonable defaults for normalized dense embeddings (like jina-v5).
+            dbscan = DBSCAN(eps=0.5, min_samples=5)
+            labels = dbscan.fit_predict(X)
+            # DBSCAN assigns -1 to noise. We can treat noise as a separate cluster 
+            # or handle it gracefully.
+            # We'll shift labels by 1 so noise becomes cluster 0 and other clusters are 1, 2, ...
+            labels = labels + 1
+            n_clusters = len(np.unique(labels))
+        else:
+            raise ValueError(f"Unknown clustering method: {self.clustering_method}")
+            
         sizes = np.bincount(labels, minlength=n_clusters)
         self.labels_ = labels
         self.cluster_sizes_ = sizes

@@ -12,6 +12,7 @@ analysis/summary_results.md
 """
 import sys
 import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -23,9 +24,9 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from src.main.python.utils.general import get_data
 from src.main.python.iSel.entropy_sublinear_ae_is import EntropySublinearAEIS
 
-def evaluate_dataset(dataset_name, report_file):
+def evaluate_dataset(dataset_name, clustering_method, report_file):
     dataset_path = f'/data/bernardolemos/datasets/{dataset_name}/jina-v5/'
-    plots_dir = os.path.join(os.path.dirname(__file__), 'plots', dataset_name)
+    plots_dir = os.path.join(os.path.dirname(__file__), 'plots', dataset_name, clustering_method)
     os.makedirs(plots_dir, exist_ok=True)
 
     print("Loading data...")
@@ -42,14 +43,15 @@ def evaluate_dataset(dataset_name, report_file):
     majority_class = max(orig_counts, key=orig_counts.get)
     minority_class = min(orig_counts, key=orig_counts.get)
 
-    print("\nRunning EntropySublinearAEIS...")
+    print(f"\nRunning EntropySublinearAEIS with clustering: {clustering_method}...")
     selector = EntropySublinearAEIS(
         r_max=0.50,            # max reduction
         alpha=15.0,            # entropy sensitivity (high due to K-Means uniform distribution)
         n_clusters=200,        # micro-clusters
         gamma=0.5,             # square-root sublinear
         ae_epochs=50,          # autoencoder epochs
-        random_state=13
+        random_state=13,
+        clustering_method=clustering_method
     )
 
     X_reduced, y_reduced = selector.fit_transform(X_train, y_train) if hasattr(selector, 'fit_transform') else selector.fit(X_train, y_train).X_, selector.y_
@@ -143,20 +145,20 @@ def evaluate_dataset(dataset_name, report_file):
         plt.close()
 
     summary_text = f"""
-## Dataset: {dataset_name.upper()}
+## Dataset: {dataset_name.upper()} | Clustering: {clustering_method.upper()}
 - **Total Reduction:** {total_reduction:.2%}
 - **Minority Retention (Class {minority_class}):** {min_retention:.2%} ({reduced_counts.get(minority_class, 0)} / {orig_counts[minority_class]})
 - **Majority Retention (Class {majority_class}):** {maj_retention:.2%} ({reduced_counts.get(majority_class, 0)} / {orig_counts[majority_class]})
 - **Protection Ratio:** **{protection_ratio:.4f}** (Goal > 1.0)
 
-![Class Distribution](./plots/{dataset_name}/class_distribution.png)
-![Retention Rates](./plots/{dataset_name}/retention_rates.png)
+![Class Distribution](./plots/{dataset_name}/{clustering_method}/class_distribution.png)
+![Retention Rates](./plots/{dataset_name}/{clustering_method}/retention_rates.png)
 
 """
     with open(report_file, 'a') as f:
         f.write(summary_text)
 
-    print(f"\n================ SUMMARY for {dataset_name} ================")
+    print(f"\n================ SUMMARY for {dataset_name} ({clustering_method}) ================")
     print(f"Total Reduction: {total_reduction:.2%}")
     print(f"Minority Retention (Class {minority_class}): {min_retention:.2%}")
     print(f"Majority Retention (Class {majority_class}): {maj_retention:.2%}")
@@ -164,16 +166,18 @@ def evaluate_dataset(dataset_name, report_file):
     print("=====================================================\n")
 
 def main():
-    datasets = ['trec', 'ohsumed', 'wos5736', 'sst1', 'pang_movie', 'movie_review', 'vader_movie', 'mpqa', 'subj', 'sst2', 'yelp_reviews', 'acm', 'twitter', 'wos11967', 'webkb', 'books', '20ng']
+    datasets = ['trec', 'ohsumed'] # DBScan can be memory intensive, run on smaller ones
+    clustering_methods = ['dbscan']
     report_file = os.path.join(os.path.dirname(__file__), 'summary_results.md')
 
     with open(report_file, 'w') as f:
-        f.write("# SublinearAEIS Evaluation Report\n\n")
-        f.write("Evaluation of SublinearAEIS on multiple imbalanced datasets.\n\n")
+        f.write("# EntropySublinearAEIS Evaluation Report: Clustering Strategies\n\n")
+        f.write("Evaluation of SublinearAEIS using different clustering methods.\n\n")
 
     for ds in datasets:
-        print(f"\n\n>>> EVALUATING DATASET: {ds.upper()} <<<")
-        evaluate_dataset(ds, report_file)
+        for clustering_method in clustering_methods:
+            print(f"\n\n>>> EVALUATING DATASET: {ds.upper()} | CLUSTERING: {clustering_method.upper()} <<<")
+            evaluate_dataset(ds, clustering_method, report_file)
 
 if __name__ == "__main__":
     main()
