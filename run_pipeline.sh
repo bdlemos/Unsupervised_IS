@@ -136,7 +136,7 @@ if run_step 4 metrics; then
     cd "$ROOT_DIR/atcBench"
     source "$ROOT_DIR/venv/bin/activate"
     mkdir -p "$RESULTS_DIR/classificacao/results"
-    python scripts/generate_results_csv.py --pattern "$RESULTS_DIR/classificacao/output/*/**/measures.fold_*.json" -o "$RESULTS_DIR/classificacao/results/results_from_outputs.csv"
+    python scripts/generate_results_csv.py --pattern "$RESULTS_DIR/classificacao/output/*/**/measures.fold_*.json" -o "$RESULTS_DIR/classificacao/results/results_modernbert.csv"
     deactivate
 fi
 
@@ -148,7 +148,7 @@ if run_step 5 times; then
     cd "$ROOT_DIR/atcBench"
     source "$ROOT_DIR/venv/bin/activate"
     mkdir -p "$RESULTS_DIR/classificacao/results"
-    python scripts/generate_times_csv.py --pattern "$RESULTS_DIR/classificacao/output/*/**/measures.fold_*.json" -o "$RESULTS_DIR/classificacao/results/times_from_outputs.csv"
+    python scripts/generate_times_csv.py --pattern "$RESULTS_DIR/classificacao/output/*/**/measures.fold_*.json" -o "$RESULTS_DIR/classificacao/results/times_modernbert.csv"
     deactivate
 fi
 

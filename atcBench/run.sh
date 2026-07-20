@@ -74,7 +74,7 @@ done
 printf "%s\n" "${combos[@]}" | xargs -n 1 -P "$NUM_PROCESSES" -I {} bash -c '
   IFS="|" read -r dataset method <<< "{}"
   combo="${dataset}_${method}"
-  log_dir="${RESULTS_DIR:-/data/bernardolemos/results}/classificacao/logs/${dataset}"
+  log_dir="${RESULTS_DIR:-/data/bernardolemos/results}/classificacao/logs_modernbert/${dataset}"
   mkdir -p "$log_dir"
   log_file="$log_dir/${method}.log"
   
