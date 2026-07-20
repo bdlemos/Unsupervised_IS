@@ -38,7 +38,7 @@ def get_selector(method: str):
  
     if method == 'autoencoder-is': return autoencoder_is.AutoencoderIS(
                                                                         n_epochs=20, batch_size=64, bottleneck_ratio=0.05,
-                                                                        beta=beta, theta=theta, low_percentile=low_percentile, high_percentile=high_percentile
+                                                                        beta=0.50, theta=0.1666666, low_percentile=40, high_percentile=70
                                                                     )
     if method == 'gmm-is': return gmm_is.GMMIS(low_percentile=low_percentile, high_percentile=high_percentile, beta=beta, theta=theta)
 
@@ -54,7 +54,7 @@ def get_selector(method: str):
 
     # I think it can be my master piece
     if method == 'sublinear-ae-is': return sublinear_ae_is.SublinearAEIS(
-        target_reduction=0.35, # target 35% reduction
+        target_reduction=0.25, # target 25% reduction
         n_clusters=200,        # many micro-clusters
         gamma=0.5,             # square-root sublinear sampling
         ae_epochs=50,          # autoencoder epochs
