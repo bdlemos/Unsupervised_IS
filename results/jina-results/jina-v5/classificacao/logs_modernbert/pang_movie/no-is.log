@@ -1,0 +1,726 @@
+/app/atcBench/main.py:45: UserWarning: 
+The version_base parameter is not specified.
+Please specify a compatability version level, or None.
+Will assume defaults for version 1.1
+  @hydra.main(config_path=CONFIG_PATH, config_name=CONFIG_NAME)
+/app/venv/lib/python3.12/site-packages/hydra/_internal/hydra.py:119: UserWarning: Future Hydra versions will no longer change working directory at job runtime by default.
+See https://hydra.cc/docs/1.2/upgrades/1.1_to_1.2/changes_to_job_working_dir/ for more information.
+  ret = run_job(
+data:
+  nfolds: 10
+  VALIDATION_SIZE_FOR_LOSS: 0.1
+  dataset_name: pang_movie
+  is_method: no-is
+  dataset: ${data.dataset_name}_${data.is_method}
+  texts_path: ${oc.env:DATASETS_DIR,/app/datasets}/${data.dataset_name}/texts.txt
+  scores_path: ${oc.env:DATASETS_DIR,/app/datasets}/${data.dataset_name}/score.txt
+  external_splits_path: ${oc.env:RESULTS_DIR,/app/results}/instance_selection/selection/${data.dataset_name}/split_10_${data.is_method}.pkl
+model:
+  type: slm
+  model_name: answerdotai/ModernBERT-base
+  model_tag: modernbert
+  training_args:
+    max_len: 256
+    batch_size: 32
+    lr: 5.0e-05
+    num_max_epochs: 10
+    patience: 3
+    weight_decay_rate: 0.01
+    min_val_epoch_impro_delta: 0.0001
+    max_grad_norm: 1.0
+    warmup_ratio: 0.06
+  text_representation: raw
+paths:
+  output_dir: ${oc.env:RESULTS_DIR,/app/results}/classificacao/output/
+  output_dir_full_path: ${paths.output_dir}/${model.model_tag}/${data.dataset}/
+  DATA_DIR: resources/datasets/${data.dataset_name}/
+  SPLITS_DIR: resources/datasets/${data.dataset_name}/splits/
+config:
+  random_seed: 42
+
+/data/bernardolemos/results/jina-v5/classificacao/output//modernbert/pang_movie_no-is/
+{'data': {'nfolds': 10, 'VALIDATION_SIZE_FOR_LOSS': 0.1, 'dataset_name': 'pang_movie', 'is_method': 'no-is', 'dataset': '${data.dataset_name}_${data.is_method}', 'texts_path': '${oc.env:DATASETS_DIR,/app/datasets}/${data.dataset_name}/texts.txt', 'scores_path': '${oc.env:DATASETS_DIR,/app/datasets}/${data.dataset_name}/score.txt', 'external_splits_path': '${oc.env:RESULTS_DIR,/app/results}/instance_selection/selection/${data.dataset_name}/split_10_${data.is_method}.pkl'}, 'model': {'type': 'slm', 'model_name': 'answerdotai/ModernBERT-base', 'model_tag': 'modernbert', 'training_args': {'max_len': 256, 'batch_size': 32, 'lr': 5e-05, 'num_max_epochs': 10, 'patience': 3, 'weight_decay_rate': 0.01, 'min_val_epoch_impro_delta': 0.0001, 'max_grad_norm': 1.0, 'warmup_ratio': 0.06}, 'text_representation': 'raw'}, 'paths': {'output_dir': '${oc.env:RESULTS_DIR,/app/results}/classificacao/output/', 'output_dir_full_path': '${paths.output_dir}/${model.model_tag}/${data.dataset}/', 'DATA_DIR': 'resources/datasets/${data.dataset_name}/', 'SPLITS_DIR': 'resources/datasets/${data.dataset_name}/splits/'}, 'config': {'random_seed': 42}}
+Random seed setted.
+[unsupervised-is] fold=0 | train=9594 | test=1068
+[init] logging dir: logs/modernbert/pang_movie_no-is/
+Max Class =1
+Classes in y_train: 2
+Classes in y_val: 2
+[load] loading model 'answerdotai/ModernBERT-base' (2 labels)...
+[2026-07-22 07:43:42,893][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/answerdotai/ModernBERT-base/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+[2026-07-22 07:43:42,894][huggingface_hub.utils._http][WARNING] - Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+[2026-07-22 07:43:42,900][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/answerdotai/ModernBERT-base/8949b909ec900327062f0ebf497f51aef5e6f0c8/config.json "HTTP/1.1 200 OK"
+[2026-07-22 07:43:42,953][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/answerdotai/ModernBERT-base/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-07-22 07:43:42,958][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/answerdotai/ModernBERT-base/8949b909ec900327062f0ebf497f51aef5e6f0c8/config.json "HTTP/1.1 200 OK"
+Loading weights:   0%|          | 0/136 [00:00<?, ?it/s]Loading weights: 100%|██████████| 136/136 [00:00<00:00, 1766.47it/s]
+[transformers] [1mModernBertForSequenceClassification LOAD REPORT[0m from: answerdotai/ModernBERT-base
+Key               | Status     | 
+------------------+------------+-
+decoder.bias      | UNEXPECTED | 
+classifier.weight | MISSING    | 
+classifier.bias   | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+[load] loading tokenizer (max_len=256)...
+[2026-07-22 07:43:45,213][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/answerdotai/ModernBERT-base/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-07-22 07:43:45,218][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/answerdotai/ModernBERT-base/8949b909ec900327062f0ebf497f51aef5e6f0c8/config.json "HTTP/1.1 200 OK"
+[2026-07-22 07:43:45,236][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/answerdotai/ModernBERT-base/resolve/main/tokenizer_config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-07-22 07:43:45,242][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/answerdotai/ModernBERT-base/8949b909ec900327062f0ebf497f51aef5e6f0c8/tokenizer_config.json "HTTP/1.1 200 OK"
+[2026-07-22 07:43:45,259][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/answerdotai/ModernBERT-base/resolve/main/tokenizer_config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-07-22 07:43:45,263][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/answerdotai/ModernBERT-base/8949b909ec900327062f0ebf497f51aef5e6f0c8/tokenizer_config.json "HTTP/1.1 200 OK"
+[2026-07-22 07:43:45,288][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/answerdotai/ModernBERT-base/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+[2026-07-22 07:43:45,306][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/answerdotai/ModernBERT-base/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+[load] model and tokenizer ready.
+Loading training data
+Training data loaded.
+
+[fit] model=answerdotai/ModernBERT-base | classes=2 | epochs=10 | patience=3
+[fit] lr=5.0e-05 | warmup=162 steps (6% of 2700)
+----------------------------------------------------------------------
+
+[epoch 1/10]
+  train loss : 4.3370E-01
+  val loss   : 2.7205E-01  |  lr: 4.79e-05
+  checkpoint : val loss improved → 2.7205E-01 (saved)
+
+[epoch 2/10]
+  train loss : 2.0055E-01
+  val loss   : 4.1110E-01  |  lr: 4.26e-05
+  patience   : 0/3
+
+[epoch 3/10]
+  train loss : 7.6722E-02
+  val loss   : 4.8713E-01  |  lr: 3.72e-05
+  patience   : 1/3
+
+[epoch 4/10]
+  train loss : 3.1725E-02
+  val loss   : 6.6831E-01  |  lr: 3.19e-05
+  patience   : 2/3
+
+[epoch 5/10]
+  train loss : 1.6238E-02
+  val loss   : 9.3702E-01  |  lr: 2.66e-05
+  patience   : 3/3
+
+[fit] early stopping triggered at epoch 5.
+[fit] training complete in 543.0s
+0.9026217228464419 0.9026213813540005
+Saving proba...
+Proba Saved
+[unsupervised-is] fold=1 | train=9596 | test=1066
+[init] logging dir: logs/modernbert/pang_movie_no-is/
+Max Class =1
+Classes in y_train: 2
+Classes in y_val: 2
+[load] loading model 'answerdotai/ModernBERT-base' (2 labels)...
+[2026-07-22 07:52:55,819][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/answerdotai/ModernBERT-base/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-07-22 07:52:55,826][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/answerdotai/ModernBERT-base/8949b909ec900327062f0ebf497f51aef5e6f0c8/config.json "HTTP/1.1 200 OK"
+[2026-07-22 07:52:55,844][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/answerdotai/ModernBERT-base/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-07-22 07:52:55,849][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/answerdotai/ModernBERT-base/8949b909ec900327062f0ebf497f51aef5e6f0c8/config.json "HTTP/1.1 200 OK"
+Loading weights:   0%|          | 0/136 [00:00<?, ?it/s]Loading weights:  99%|█████████▉| 135/136 [00:00<00:00, 1337.51it/s]Loading weights: 100%|██████████| 136/136 [00:00<00:00, 1340.80it/s]
+[transformers] [1mModernBertForSequenceClassification LOAD REPORT[0m from: answerdotai/ModernBERT-base
+Key               | Status     | 
+------------------+------------+-
+decoder.bias      | UNEXPECTED | 
+classifier.weight | MISSING    | 
+classifier.bias   | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+[load] loading tokenizer (max_len=256)...
+[2026-07-22 07:52:56,037][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/answerdotai/ModernBERT-base/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-07-22 07:52:56,043][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/answerdotai/ModernBERT-base/8949b909ec900327062f0ebf497f51aef5e6f0c8/config.json "HTTP/1.1 200 OK"
+[2026-07-22 07:52:56,065][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/answerdotai/ModernBERT-base/resolve/main/tokenizer_config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-07-22 07:52:56,071][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/answerdotai/ModernBERT-base/8949b909ec900327062f0ebf497f51aef5e6f0c8/tokenizer_config.json "HTTP/1.1 200 OK"
+[2026-07-22 07:52:56,093][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/answerdotai/ModernBERT-base/resolve/main/tokenizer_config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-07-22 07:52:56,098][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/answerdotai/ModernBERT-base/8949b909ec900327062f0ebf497f51aef5e6f0c8/tokenizer_config.json "HTTP/1.1 200 OK"
+[2026-07-22 07:52:56,120][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/answerdotai/ModernBERT-base/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+[2026-07-22 07:52:56,138][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/answerdotai/ModernBERT-base/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+[load] model and tokenizer ready.
+Loading training data
+Training data loaded.
+
+[fit] model=answerdotai/ModernBERT-base | classes=2 | epochs=10 | patience=3
+[fit] lr=5.0e-05 | warmup=162 steps (6% of 2700)
+----------------------------------------------------------------------
+
+[epoch 1/10]
+  train loss : 4.4278E-01
+  val loss   : 2.7614E-01  |  lr: 4.79e-05
+  checkpoint : val loss improved → 2.7614E-01 (saved)
+
+[epoch 2/10]
+  train loss : 2.2060E-01
+  val loss   : 4.9295E-01  |  lr: 4.26e-05
+  patience   : 0/3
+
+[epoch 3/10]
+  train loss : 9.2130E-02
+  val loss   : 7.4428E-01  |  lr: 3.72e-05
+  patience   : 1/3
+
+[epoch 4/10]
+  train loss : 4.8079E-02
+  val loss   : 7.7088E-01  |  lr: 3.19e-05
+  patience   : 2/3
+
+[epoch 5/10]
+  train loss : 1.7966E-02
+  val loss   : 7.3819E-01  |  lr: 2.66e-05
+  patience   : 3/3
+
+[fit] early stopping triggered at epoch 5.
+[fit] training complete in 540.3s
+0.8883677298311444 0.8883393320992512
+Saving proba...
+Proba Saved
+[unsupervised-is] fold=2 | train=9596 | test=1066
+[init] logging dir: logs/modernbert/pang_movie_no-is/
+Max Class =1
+Classes in y_train: 2
+Classes in y_val: 2
+[load] loading model 'answerdotai/ModernBERT-base' (2 labels)...
+[2026-07-22 08:02:07,993][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/answerdotai/ModernBERT-base/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-07-22 08:02:08,004][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/answerdotai/ModernBERT-base/8949b909ec900327062f0ebf497f51aef5e6f0c8/config.json "HTTP/1.1 200 OK"
+[2026-07-22 08:02:08,023][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/answerdotai/ModernBERT-base/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-07-22 08:02:08,028][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/answerdotai/ModernBERT-base/8949b909ec900327062f0ebf497f51aef5e6f0c8/config.json "HTTP/1.1 200 OK"
+Loading weights:   0%|          | 0/136 [00:00<?, ?it/s]Loading weights: 100%|██████████| 136/136 [00:00<00:00, 1686.31it/s]
+[transformers] [1mModernBertForSequenceClassification LOAD REPORT[0m from: answerdotai/ModernBERT-base
+Key               | Status     | 
+------------------+------------+-
+decoder.bias      | UNEXPECTED | 
+classifier.weight | MISSING    | 
+classifier.bias   | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+[load] loading tokenizer (max_len=256)...
+[2026-07-22 08:02:08,190][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/answerdotai/ModernBERT-base/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-07-22 08:02:08,195][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/answerdotai/ModernBERT-base/8949b909ec900327062f0ebf497f51aef5e6f0c8/config.json "HTTP/1.1 200 OK"
+[2026-07-22 08:02:08,216][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/answerdotai/ModernBERT-base/resolve/main/tokenizer_config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-07-22 08:02:08,222][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/answerdotai/ModernBERT-base/8949b909ec900327062f0ebf497f51aef5e6f0c8/tokenizer_config.json "HTTP/1.1 200 OK"
+[2026-07-22 08:02:08,240][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/answerdotai/ModernBERT-base/resolve/main/tokenizer_config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-07-22 08:02:08,246][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/answerdotai/ModernBERT-base/8949b909ec900327062f0ebf497f51aef5e6f0c8/tokenizer_config.json "HTTP/1.1 200 OK"
+[2026-07-22 08:02:08,269][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/answerdotai/ModernBERT-base/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+[2026-07-22 08:02:08,291][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/answerdotai/ModernBERT-base/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+[load] model and tokenizer ready.
+Loading training data
+Training data loaded.
+
+[fit] model=answerdotai/ModernBERT-base | classes=2 | epochs=10 | patience=3
+[fit] lr=5.0e-05 | warmup=162 steps (6% of 2700)
+----------------------------------------------------------------------
+
+[epoch 1/10]
+  train loss : 4.2519E-01
+  val loss   : 2.7511E-01  |  lr: 4.79e-05
+  checkpoint : val loss improved → 2.7511E-01 (saved)
+
+[epoch 2/10]
+  train loss : 2.0909E-01
+  val loss   : 3.4012E-01  |  lr: 4.26e-05
+  patience   : 0/3
+
+[epoch 3/10]
+  train loss : 8.9390E-02
+  val loss   : 6.1665E-01  |  lr: 3.72e-05
+  patience   : 1/3
+
+[epoch 4/10]
+  train loss : 3.2031E-02
+  val loss   : 7.9458E-01  |  lr: 3.19e-05
+  patience   : 2/3
+
+[epoch 5/10]
+  train loss : 1.6800E-02
+  val loss   : 9.1836E-01  |  lr: 2.66e-05
+  patience   : 3/3
+
+[fit] early stopping triggered at epoch 5.
+[fit] training complete in 540.5s
+0.8864915572232646 0.8860937117787471
+Saving proba...
+Proba Saved
+[unsupervised-is] fold=3 | train=9596 | test=1066
+[init] logging dir: logs/modernbert/pang_movie_no-is/
+Max Class =1
+Classes in y_train: 2
+Classes in y_val: 2
+[load] loading model 'answerdotai/ModernBERT-base' (2 labels)...
+[2026-07-22 08:11:18,370][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/answerdotai/ModernBERT-base/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-07-22 08:11:18,375][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/answerdotai/ModernBERT-base/8949b909ec900327062f0ebf497f51aef5e6f0c8/config.json "HTTP/1.1 200 OK"
+[2026-07-22 08:11:18,393][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/answerdotai/ModernBERT-base/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-07-22 08:11:18,399][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/answerdotai/ModernBERT-base/8949b909ec900327062f0ebf497f51aef5e6f0c8/config.json "HTTP/1.1 200 OK"
+Loading weights:   0%|          | 0/136 [00:00<?, ?it/s]Loading weights: 100%|██████████| 136/136 [00:00<00:00, 1633.66it/s]
+[transformers] [1mModernBertForSequenceClassification LOAD REPORT[0m from: answerdotai/ModernBERT-base
+Key               | Status     | 
+------------------+------------+-
+decoder.bias      | UNEXPECTED | 
+classifier.weight | MISSING    | 
+classifier.bias   | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+[load] loading tokenizer (max_len=256)...
+[2026-07-22 08:11:18,566][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/answerdotai/ModernBERT-base/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-07-22 08:11:18,571][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/answerdotai/ModernBERT-base/8949b909ec900327062f0ebf497f51aef5e6f0c8/config.json "HTTP/1.1 200 OK"
+[2026-07-22 08:11:18,592][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/answerdotai/ModernBERT-base/resolve/main/tokenizer_config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-07-22 08:11:18,599][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/answerdotai/ModernBERT-base/8949b909ec900327062f0ebf497f51aef5e6f0c8/tokenizer_config.json "HTTP/1.1 200 OK"
+[2026-07-22 08:11:18,618][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/answerdotai/ModernBERT-base/resolve/main/tokenizer_config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-07-22 08:11:18,624][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/answerdotai/ModernBERT-base/8949b909ec900327062f0ebf497f51aef5e6f0c8/tokenizer_config.json "HTTP/1.1 200 OK"
+[2026-07-22 08:11:18,647][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/answerdotai/ModernBERT-base/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+[2026-07-22 08:11:18,672][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/answerdotai/ModernBERT-base/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+[load] model and tokenizer ready.
+Loading training data
+Training data loaded.
+
+[fit] model=answerdotai/ModernBERT-base | classes=2 | epochs=10 | patience=3
+[fit] lr=5.0e-05 | warmup=162 steps (6% of 2700)
+----------------------------------------------------------------------
+
+[epoch 1/10]
+  train loss : 4.4296E-01
+  val loss   : 3.3582E-01  |  lr: 4.79e-05
+  checkpoint : val loss improved → 3.3582E-01 (saved)
+
+[epoch 2/10]
+  train loss : 2.1752E-01
+  val loss   : 5.8663E-01  |  lr: 4.26e-05
+  patience   : 0/3
+
+[epoch 3/10]
+  train loss : 7.5996E-02
+  val loss   : 7.1211E-01  |  lr: 3.72e-05
+  patience   : 1/3
+
+[epoch 4/10]
+  train loss : 3.0357E-02
+  val loss   : 8.0665E-01  |  lr: 3.19e-05
+  patience   : 2/3
+
+[epoch 5/10]
+  train loss : 1.0032E-02
+  val loss   : 1.0859E+00  |  lr: 2.66e-05
+  patience   : 3/3
+
+[fit] early stopping triggered at epoch 5.
+[fit] training complete in 540.5s
+0.8864915572232646 0.8864626822185664
+Saving proba...
+Proba Saved
+[unsupervised-is] fold=4 | train=9596 | test=1066
+[init] logging dir: logs/modernbert/pang_movie_no-is/
+Max Class =1
+Classes in y_train: 2
+Classes in y_val: 2
+[load] loading model 'answerdotai/ModernBERT-base' (2 labels)...
+[2026-07-22 08:20:28,791][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/answerdotai/ModernBERT-base/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-07-22 08:20:28,795][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/answerdotai/ModernBERT-base/8949b909ec900327062f0ebf497f51aef5e6f0c8/config.json "HTTP/1.1 200 OK"
+[2026-07-22 08:20:28,818][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/answerdotai/ModernBERT-base/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-07-22 08:20:28,823][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/answerdotai/ModernBERT-base/8949b909ec900327062f0ebf497f51aef5e6f0c8/config.json "HTTP/1.1 200 OK"
+Loading weights:   0%|          | 0/136 [00:00<?, ?it/s]Loading weights: 100%|██████████| 136/136 [00:00<00:00, 1412.32it/s]
+[transformers] [1mModernBertForSequenceClassification LOAD REPORT[0m from: answerdotai/ModernBERT-base
+Key               | Status     | 
+------------------+------------+-
+decoder.bias      | UNEXPECTED | 
+classifier.weight | MISSING    | 
+classifier.bias   | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+[load] loading tokenizer (max_len=256)...
+[2026-07-22 08:20:29,002][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/answerdotai/ModernBERT-base/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-07-22 08:20:29,008][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/answerdotai/ModernBERT-base/8949b909ec900327062f0ebf497f51aef5e6f0c8/config.json "HTTP/1.1 200 OK"
+[2026-07-22 08:20:29,030][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/answerdotai/ModernBERT-base/resolve/main/tokenizer_config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-07-22 08:20:29,036][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/answerdotai/ModernBERT-base/8949b909ec900327062f0ebf497f51aef5e6f0c8/tokenizer_config.json "HTTP/1.1 200 OK"
+[2026-07-22 08:20:29,054][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/answerdotai/ModernBERT-base/resolve/main/tokenizer_config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-07-22 08:20:29,060][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/answerdotai/ModernBERT-base/8949b909ec900327062f0ebf497f51aef5e6f0c8/tokenizer_config.json "HTTP/1.1 200 OK"
+[2026-07-22 08:20:29,078][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/answerdotai/ModernBERT-base/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+[2026-07-22 08:20:29,093][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/answerdotai/ModernBERT-base/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+[load] model and tokenizer ready.
+Loading training data
+Training data loaded.
+
+[fit] model=answerdotai/ModernBERT-base | classes=2 | epochs=10 | patience=3
+[fit] lr=5.0e-05 | warmup=162 steps (6% of 2700)
+----------------------------------------------------------------------
+
+[epoch 1/10]
+  train loss : 4.4823E-01
+  val loss   : 3.4181E-01  |  lr: 4.79e-05
+  checkpoint : val loss improved → 3.4181E-01 (saved)
+
+[epoch 2/10]
+  train loss : 2.0397E-01
+  val loss   : 3.9471E-01  |  lr: 4.26e-05
+  patience   : 0/3
+
+[epoch 3/10]
+  train loss : 8.1997E-02
+  val loss   : 5.5433E-01  |  lr: 3.72e-05
+  patience   : 1/3
+
+[epoch 4/10]
+  train loss : 3.1060E-02
+  val loss   : 6.7087E-01  |  lr: 3.19e-05
+  patience   : 2/3
+
+[epoch 5/10]
+  train loss : 1.0092E-02
+  val loss   : 8.7257E-01  |  lr: 2.66e-05
+  patience   : 3/3
+
+[fit] early stopping triggered at epoch 5.
+[fit] training complete in 541.4s
+0.8968105065666041 0.8968105065666041
+Saving proba...
+Proba Saved
+[unsupervised-is] fold=5 | train=9596 | test=1066
+[init] logging dir: logs/modernbert/pang_movie_no-is/
+Max Class =1
+Classes in y_train: 2
+Classes in y_val: 2
+[load] loading model 'answerdotai/ModernBERT-base' (2 labels)...
+[2026-07-22 08:29:40,052][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/answerdotai/ModernBERT-base/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-07-22 08:29:40,057][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/answerdotai/ModernBERT-base/8949b909ec900327062f0ebf497f51aef5e6f0c8/config.json "HTTP/1.1 200 OK"
+[2026-07-22 08:29:40,073][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/answerdotai/ModernBERT-base/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-07-22 08:29:40,077][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/answerdotai/ModernBERT-base/8949b909ec900327062f0ebf497f51aef5e6f0c8/config.json "HTTP/1.1 200 OK"
+Loading weights:   0%|          | 0/136 [00:00<?, ?it/s]Loading weights: 100%|██████████| 136/136 [00:00<00:00, 1644.46it/s]
+[transformers] [1mModernBertForSequenceClassification LOAD REPORT[0m from: answerdotai/ModernBERT-base
+Key               | Status     | 
+------------------+------------+-
+decoder.bias      | UNEXPECTED | 
+classifier.weight | MISSING    | 
+classifier.bias   | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+[load] loading tokenizer (max_len=256)...
+[2026-07-22 08:29:40,236][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/answerdotai/ModernBERT-base/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-07-22 08:29:40,240][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/answerdotai/ModernBERT-base/8949b909ec900327062f0ebf497f51aef5e6f0c8/config.json "HTTP/1.1 200 OK"
+[2026-07-22 08:29:40,261][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/answerdotai/ModernBERT-base/resolve/main/tokenizer_config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-07-22 08:29:40,266][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/answerdotai/ModernBERT-base/8949b909ec900327062f0ebf497f51aef5e6f0c8/tokenizer_config.json "HTTP/1.1 200 OK"
+[2026-07-22 08:29:40,287][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/answerdotai/ModernBERT-base/resolve/main/tokenizer_config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-07-22 08:29:40,293][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/answerdotai/ModernBERT-base/8949b909ec900327062f0ebf497f51aef5e6f0c8/tokenizer_config.json "HTTP/1.1 200 OK"
+[2026-07-22 08:29:40,311][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/answerdotai/ModernBERT-base/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+[2026-07-22 08:29:40,334][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/answerdotai/ModernBERT-base/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+[load] model and tokenizer ready.
+Loading training data
+Training data loaded.
+
+[fit] model=answerdotai/ModernBERT-base | classes=2 | epochs=10 | patience=3
+[fit] lr=5.0e-05 | warmup=162 steps (6% of 2700)
+----------------------------------------------------------------------
+
+[epoch 1/10]
+  train loss : 4.5633E-01
+  val loss   : 2.8803E-01  |  lr: 4.79e-05
+  checkpoint : val loss improved → 2.8803E-01 (saved)
+
+[epoch 2/10]
+  train loss : 2.1636E-01
+  val loss   : 5.1360E-01  |  lr: 4.26e-05
+  patience   : 0/3
+
+[epoch 3/10]
+  train loss : 9.6671E-02
+  val loss   : 5.5752E-01  |  lr: 3.72e-05
+  patience   : 1/3
+
+[epoch 4/10]
+  train loss : 3.9858E-02
+  val loss   : 5.5706E-01  |  lr: 3.19e-05
+  patience   : 2/3
+
+[epoch 5/10]
+  train loss : 6.8116E-03
+  val loss   : 9.2654E-01  |  lr: 2.66e-05
+  patience   : 3/3
+
+[fit] early stopping triggered at epoch 5.
+[fit] training complete in 541.5s
+0.8986866791744841 0.8986863225479429
+Saving proba...
+Proba Saved
+[unsupervised-is] fold=6 | train=9596 | test=1066
+[init] logging dir: logs/modernbert/pang_movie_no-is/
+Max Class =1
+Classes in y_train: 2
+Classes in y_val: 2
+[load] loading model 'answerdotai/ModernBERT-base' (2 labels)...
+[2026-07-22 08:38:51,455][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/answerdotai/ModernBERT-base/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-07-22 08:38:51,470][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/answerdotai/ModernBERT-base/8949b909ec900327062f0ebf497f51aef5e6f0c8/config.json "HTTP/1.1 200 OK"
+[2026-07-22 08:38:51,489][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/answerdotai/ModernBERT-base/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-07-22 08:38:51,495][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/answerdotai/ModernBERT-base/8949b909ec900327062f0ebf497f51aef5e6f0c8/config.json "HTTP/1.1 200 OK"
+Loading weights:   0%|          | 0/136 [00:00<?, ?it/s]Loading weights: 100%|██████████| 136/136 [00:00<00:00, 2368.87it/s]
+[transformers] [1mModernBertForSequenceClassification LOAD REPORT[0m from: answerdotai/ModernBERT-base
+Key               | Status     | 
+------------------+------------+-
+decoder.bias      | UNEXPECTED | 
+classifier.weight | MISSING    | 
+classifier.bias   | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+[load] loading tokenizer (max_len=256)...
+[2026-07-22 08:38:51,634][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/answerdotai/ModernBERT-base/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-07-22 08:38:51,639][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/answerdotai/ModernBERT-base/8949b909ec900327062f0ebf497f51aef5e6f0c8/config.json "HTTP/1.1 200 OK"
+[2026-07-22 08:38:51,656][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/answerdotai/ModernBERT-base/resolve/main/tokenizer_config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-07-22 08:38:51,661][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/answerdotai/ModernBERT-base/8949b909ec900327062f0ebf497f51aef5e6f0c8/tokenizer_config.json "HTTP/1.1 200 OK"
+[2026-07-22 08:38:51,677][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/answerdotai/ModernBERT-base/resolve/main/tokenizer_config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-07-22 08:38:51,683][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/answerdotai/ModernBERT-base/8949b909ec900327062f0ebf497f51aef5e6f0c8/tokenizer_config.json "HTTP/1.1 200 OK"
+[2026-07-22 08:38:51,704][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/answerdotai/ModernBERT-base/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+[2026-07-22 08:38:51,725][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/answerdotai/ModernBERT-base/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+[load] model and tokenizer ready.
+Loading training data
+Training data loaded.
+
+[fit] model=answerdotai/ModernBERT-base | classes=2 | epochs=10 | patience=3
+[fit] lr=5.0e-05 | warmup=162 steps (6% of 2700)
+----------------------------------------------------------------------
+
+[epoch 1/10]
+  train loss : 4.1795E-01
+  val loss   : 3.1130E-01  |  lr: 4.79e-05
+  checkpoint : val loss improved → 3.1130E-01 (saved)
+
+[epoch 2/10]
+  train loss : 1.8836E-01
+  val loss   : 4.3107E-01  |  lr: 4.26e-05
+  patience   : 0/3
+
+[epoch 3/10]
+  train loss : 8.3011E-02
+  val loss   : 5.5031E-01  |  lr: 3.72e-05
+  patience   : 1/3
+
+[epoch 4/10]
+  train loss : 2.5800E-02
+  val loss   : 9.2046E-01  |  lr: 3.19e-05
+  patience   : 2/3
+
+[epoch 5/10]
+  train loss : 1.8124E-02
+  val loss   : 1.0737E+00  |  lr: 2.66e-05
+  patience   : 3/3
+
+[fit] early stopping triggered at epoch 5.
+[fit] training complete in 541.5s
+0.8986866791744841 0.8986063748837472
+Saving proba...
+Proba Saved
+[unsupervised-is] fold=7 | train=9596 | test=1066
+[init] logging dir: logs/modernbert/pang_movie_no-is/
+Max Class =1
+Classes in y_train: 2
+Classes in y_val: 2
+[load] loading model 'answerdotai/ModernBERT-base' (2 labels)...
+[2026-07-22 08:48:02,791][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/answerdotai/ModernBERT-base/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-07-22 08:48:02,797][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/answerdotai/ModernBERT-base/8949b909ec900327062f0ebf497f51aef5e6f0c8/config.json "HTTP/1.1 200 OK"
+[2026-07-22 08:48:02,816][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/answerdotai/ModernBERT-base/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-07-22 08:48:02,821][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/answerdotai/ModernBERT-base/8949b909ec900327062f0ebf497f51aef5e6f0c8/config.json "HTTP/1.1 200 OK"
+Loading weights:   0%|          | 0/136 [00:00<?, ?it/s]Loading weights:  99%|█████████▊| 134/136 [00:00<00:00, 219.66it/s]Loading weights: 100%|██████████| 136/136 [00:00<00:00, 222.78it/s]
+[transformers] [1mModernBertForSequenceClassification LOAD REPORT[0m from: answerdotai/ModernBERT-base
+Key               | Status     | 
+------------------+------------+-
+decoder.bias      | UNEXPECTED | 
+classifier.weight | MISSING    | 
+classifier.bias   | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+[load] loading tokenizer (max_len=256)...
+[2026-07-22 08:48:04,666][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/answerdotai/ModernBERT-base/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-07-22 08:48:04,671][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/answerdotai/ModernBERT-base/8949b909ec900327062f0ebf497f51aef5e6f0c8/config.json "HTTP/1.1 200 OK"
+[2026-07-22 08:48:04,690][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/answerdotai/ModernBERT-base/resolve/main/tokenizer_config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-07-22 08:48:04,697][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/answerdotai/ModernBERT-base/8949b909ec900327062f0ebf497f51aef5e6f0c8/tokenizer_config.json "HTTP/1.1 200 OK"
+[2026-07-22 08:48:04,715][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/answerdotai/ModernBERT-base/resolve/main/tokenizer_config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-07-22 08:48:04,720][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/answerdotai/ModernBERT-base/8949b909ec900327062f0ebf497f51aef5e6f0c8/tokenizer_config.json "HTTP/1.1 200 OK"
+[2026-07-22 08:48:04,742][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/answerdotai/ModernBERT-base/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+[2026-07-22 08:48:04,762][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/answerdotai/ModernBERT-base/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+[load] model and tokenizer ready.
+Loading training data
+Training data loaded.
+
+[fit] model=answerdotai/ModernBERT-base | classes=2 | epochs=10 | patience=3
+[fit] lr=5.0e-05 | warmup=162 steps (6% of 2700)
+----------------------------------------------------------------------
+
+[epoch 1/10]
+  train loss : 4.3851E-01
+  val loss   : 2.7172E-01  |  lr: 4.79e-05
+  checkpoint : val loss improved → 2.7172E-01 (saved)
+
+[epoch 2/10]
+  train loss : 1.9340E-01
+  val loss   : 4.0053E-01  |  lr: 4.26e-05
+  patience   : 0/3
+
+[epoch 3/10]
+  train loss : 9.1176E-02
+  val loss   : 7.3610E-01  |  lr: 3.72e-05
+  patience   : 1/3
+
+[epoch 4/10]
+  train loss : 3.6924E-02
+  val loss   : 7.4043E-01  |  lr: 3.19e-05
+  patience   : 2/3
+
+[epoch 5/10]
+  train loss : 1.2728E-02
+  val loss   : 7.6284E-01  |  lr: 2.66e-05
+  patience   : 3/3
+
+[fit] early stopping triggered at epoch 5.
+[fit] training complete in 542.1s
+0.8846153846153846 0.8845047024180215
+Saving proba...
+Proba Saved
+[unsupervised-is] fold=8 | train=9596 | test=1066
+[init] logging dir: logs/modernbert/pang_movie_no-is/
+Max Class =1
+Classes in y_train: 2
+Classes in y_val: 2
+[load] loading model 'answerdotai/ModernBERT-base' (2 labels)...
+[2026-07-22 08:57:14,721][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/answerdotai/ModernBERT-base/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-07-22 08:57:14,726][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/answerdotai/ModernBERT-base/8949b909ec900327062f0ebf497f51aef5e6f0c8/config.json "HTTP/1.1 200 OK"
+[2026-07-22 08:57:14,742][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/answerdotai/ModernBERT-base/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-07-22 08:57:14,747][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/answerdotai/ModernBERT-base/8949b909ec900327062f0ebf497f51aef5e6f0c8/config.json "HTTP/1.1 200 OK"
+Loading weights:   0%|          | 0/136 [00:00<?, ?it/s]Loading weights: 100%|██████████| 136/136 [00:00<00:00, 2074.55it/s]
+[transformers] [1mModernBertForSequenceClassification LOAD REPORT[0m from: answerdotai/ModernBERT-base
+Key               | Status     | 
+------------------+------------+-
+decoder.bias      | UNEXPECTED | 
+classifier.weight | MISSING    | 
+classifier.bias   | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+[load] loading tokenizer (max_len=256)...
+[2026-07-22 08:57:15,083][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/answerdotai/ModernBERT-base/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-07-22 08:57:15,089][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/answerdotai/ModernBERT-base/8949b909ec900327062f0ebf497f51aef5e6f0c8/config.json "HTTP/1.1 200 OK"
+[2026-07-22 08:57:15,110][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/answerdotai/ModernBERT-base/resolve/main/tokenizer_config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-07-22 08:57:15,116][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/answerdotai/ModernBERT-base/8949b909ec900327062f0ebf497f51aef5e6f0c8/tokenizer_config.json "HTTP/1.1 200 OK"
+[2026-07-22 08:57:15,135][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/answerdotai/ModernBERT-base/resolve/main/tokenizer_config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-07-22 08:57:15,141][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/answerdotai/ModernBERT-base/8949b909ec900327062f0ebf497f51aef5e6f0c8/tokenizer_config.json "HTTP/1.1 200 OK"
+[2026-07-22 08:57:15,160][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/answerdotai/ModernBERT-base/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+[2026-07-22 08:57:15,182][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/answerdotai/ModernBERT-base/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+[load] model and tokenizer ready.
+Loading training data
+Training data loaded.
+
+[fit] model=answerdotai/ModernBERT-base | classes=2 | epochs=10 | patience=3
+[fit] lr=5.0e-05 | warmup=162 steps (6% of 2700)
+----------------------------------------------------------------------
+
+[epoch 1/10]
+  train loss : 4.4098E-01
+  val loss   : 3.0545E-01  |  lr: 4.79e-05
+  checkpoint : val loss improved → 3.0545E-01 (saved)
+
+[epoch 2/10]
+  train loss : 2.0017E-01
+  val loss   : 3.8117E-01  |  lr: 4.26e-05
+  patience   : 0/3
+
+[epoch 3/10]
+  train loss : 7.7546E-02
+  val loss   : 4.8165E-01  |  lr: 3.72e-05
+  patience   : 1/3
+
+[epoch 4/10]
+  train loss : 2.1625E-02
+  val loss   : 1.2336E+00  |  lr: 3.19e-05
+  patience   : 2/3
+
+[epoch 5/10]
+  train loss : 1.1462E-02
+  val loss   : 1.3830E+00  |  lr: 2.66e-05
+  patience   : 3/3
+
+[fit] early stopping triggered at epoch 5.
+[fit] training complete in 541.6s
+0.899624765478424 0.8995504242568351
+Saving proba...
+Proba Saved
+[unsupervised-is] fold=9 | train=9596 | test=1066
+[init] logging dir: logs/modernbert/pang_movie_no-is/
+Max Class =1
+Classes in y_train: 2
+Classes in y_val: 2
+[load] loading model 'answerdotai/ModernBERT-base' (2 labels)...
+[2026-07-22 09:06:26,278][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/answerdotai/ModernBERT-base/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-07-22 09:06:26,282][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/answerdotai/ModernBERT-base/8949b909ec900327062f0ebf497f51aef5e6f0c8/config.json "HTTP/1.1 200 OK"
+[2026-07-22 09:06:26,303][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/answerdotai/ModernBERT-base/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-07-22 09:06:26,308][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/answerdotai/ModernBERT-base/8949b909ec900327062f0ebf497f51aef5e6f0c8/config.json "HTTP/1.1 200 OK"
+Loading weights:   0%|          | 0/136 [00:00<?, ?it/s]Loading weights: 100%|██████████| 136/136 [00:00<00:00, 1663.21it/s]
+[transformers] [1mModernBertForSequenceClassification LOAD REPORT[0m from: answerdotai/ModernBERT-base
+Key               | Status     | 
+------------------+------------+-
+decoder.bias      | UNEXPECTED | 
+classifier.weight | MISSING    | 
+classifier.bias   | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+[load] loading tokenizer (max_len=256)...
+[2026-07-22 09:06:26,462][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/answerdotai/ModernBERT-base/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-07-22 09:06:26,467][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/answerdotai/ModernBERT-base/8949b909ec900327062f0ebf497f51aef5e6f0c8/config.json "HTTP/1.1 200 OK"
+[2026-07-22 09:06:26,489][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/answerdotai/ModernBERT-base/resolve/main/tokenizer_config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-07-22 09:06:26,494][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/answerdotai/ModernBERT-base/8949b909ec900327062f0ebf497f51aef5e6f0c8/tokenizer_config.json "HTTP/1.1 200 OK"
+[2026-07-22 09:06:26,539][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/answerdotai/ModernBERT-base/resolve/main/tokenizer_config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-07-22 09:06:26,544][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/answerdotai/ModernBERT-base/8949b909ec900327062f0ebf497f51aef5e6f0c8/tokenizer_config.json "HTTP/1.1 200 OK"
+[2026-07-22 09:06:26,563][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/answerdotai/ModernBERT-base/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+[2026-07-22 09:06:26,586][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/answerdotai/ModernBERT-base/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+[load] model and tokenizer ready.
+Loading training data
+Training data loaded.
+
+[fit] model=answerdotai/ModernBERT-base | classes=2 | epochs=10 | patience=3
+[fit] lr=5.0e-05 | warmup=162 steps (6% of 2700)
+----------------------------------------------------------------------
+
+[epoch 1/10]
+  train loss : 4.2254E-01
+  val loss   : 2.8556E-01  |  lr: 4.79e-05
+  checkpoint : val loss improved → 2.8556E-01 (saved)
+
+[epoch 2/10]
+  train loss : 1.9044E-01
+  val loss   : 4.3838E-01  |  lr: 4.26e-05
+  patience   : 0/3
+
+[epoch 3/10]
+  train loss : 6.8808E-02
+  val loss   : 9.1894E-01  |  lr: 3.72e-05
+  patience   : 1/3
+
+[epoch 4/10]
+  train loss : 3.0176E-02
+  val loss   : 7.3873E-01  |  lr: 3.19e-05
+  patience   : 2/3
+
+[epoch 5/10]
+  train loss : 1.1869E-02
+  val loss   : 1.1362E+00  |  lr: 2.66e-05
+  patience   : 3/3
+
+[fit] early stopping triggered at epoch 5.
+[fit] training complete in 541.4s
+0.8761726078799249 0.8756363482097405
+Saving proba...
+Proba Saved
+Done.

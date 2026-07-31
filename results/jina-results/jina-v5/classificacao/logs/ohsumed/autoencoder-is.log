@@ -1,0 +1,856 @@
+/app/atcBench/main.py:45: UserWarning: 
+The version_base parameter is not specified.
+Please specify a compatability version level, or None.
+Will assume defaults for version 1.1
+  @hydra.main(config_path=CONFIG_PATH, config_name=CONFIG_NAME)
+/app/venv/lib/python3.12/site-packages/hydra/_internal/hydra.py:119: UserWarning: Future Hydra versions will no longer change working directory at job runtime by default.
+See https://hydra.cc/docs/1.2/upgrades/1.1_to_1.2/changes_to_job_working_dir/ for more information.
+  ret = run_job(
+data:
+  nfolds: 10
+  VALIDATION_SIZE_FOR_LOSS: 0.1
+  dataset_name: ohsumed
+  is_method: autoencoder-is
+  dataset: ${data.dataset_name}_${data.is_method}
+  texts_path: ${oc.env:DATASETS_DIR,/app/datasets}/${data.dataset_name}/texts.txt
+  scores_path: ${oc.env:DATASETS_DIR,/app/datasets}/${data.dataset_name}/score.txt
+  external_splits_path: ${oc.env:RESULTS_DIR,/app/results}/instance_selection/selection/${data.dataset_name}/split_10_${data.is_method}.pkl
+model:
+  type: slm
+  model_name: roberta-base
+  model_tag: roberta
+  training_args:
+    max_len: 256
+    batch_size: 32
+    lr: 5.0e-05
+    num_max_epochs: 10
+    patience: 3
+    weight_decay_rate: 0.01
+    min_val_epoch_impro_delta: 0.0001
+    max_grad_norm: 1.0
+    warmup_ratio: 0.06
+  text_representation: raw
+paths:
+  output_dir: ${oc.env:RESULTS_DIR,/app/results}/classificacao/output/
+  output_dir_full_path: ${paths.output_dir}/${model.model_tag}/${data.dataset}/
+  DATA_DIR: resources/datasets/${data.dataset_name}/
+  SPLITS_DIR: resources/datasets/${data.dataset_name}/splits/
+config:
+  random_seed: 42
+
+/data/bernardolemos/results/jina-v5/classificacao/output//roberta/ohsumed_autoencoder-is/
+{'data': {'nfolds': 10, 'VALIDATION_SIZE_FOR_LOSS': 0.1, 'dataset_name': 'ohsumed', 'is_method': 'autoencoder-is', 'dataset': '${data.dataset_name}_${data.is_method}', 'texts_path': '${oc.env:DATASETS_DIR,/app/datasets}/${data.dataset_name}/texts.txt', 'scores_path': '${oc.env:DATASETS_DIR,/app/datasets}/${data.dataset_name}/score.txt', 'external_splits_path': '${oc.env:RESULTS_DIR,/app/results}/instance_selection/selection/${data.dataset_name}/split_10_${data.is_method}.pkl'}, 'model': {'type': 'slm', 'model_name': 'roberta-base', 'model_tag': 'roberta', 'training_args': {'max_len': 256, 'batch_size': 32, 'lr': 5e-05, 'num_max_epochs': 10, 'patience': 3, 'weight_decay_rate': 0.01, 'min_val_epoch_impro_delta': 0.0001, 'max_grad_norm': 1.0, 'warmup_ratio': 0.06}, 'text_representation': 'raw'}, 'paths': {'output_dir': '${oc.env:RESULTS_DIR,/app/results}/classificacao/output/', 'output_dir_full_path': '${paths.output_dir}/${model.model_tag}/${data.dataset}/', 'DATA_DIR': 'resources/datasets/${data.dataset_name}/', 'SPLITS_DIR': 'resources/datasets/${data.dataset_name}/splits/'}, 'config': {'random_seed': 42}}
+Random seed setted.
+[unsupervised-is] fold=0 | train=12354 | test=1831
+[init] logging dir: logs/roberta/ohsumed_autoencoder-is/
+Max Class =22
+Classes in y_train: 23
+Classes in y_val: 23
+[load] loading model 'roberta-base' (23 labels)...
+[2026-07-18 00:41:47,200][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/roberta-base/resolve/main/config.json "HTTP/1.1 200 OK"
+[2026-07-18 00:41:47,239][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/roberta-base/resolve/main/config.json "HTTP/1.1 200 OK"
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+[2026-07-18 00:41:47,239][huggingface_hub.utils._http][WARNING] - Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/197 [00:00<?, ?it/s]Loading weights: 100%|██████████| 197/197 [00:00<00:00, 2967.29it/s]
+[transformers] [1mRobertaForSequenceClassification LOAD REPORT[0m from: roberta-base
+Key                        | Status     | 
+---------------------------+------------+-
+lm_head.bias               | UNEXPECTED | 
+lm_head.dense.bias         | UNEXPECTED | 
+lm_head.layer_norm.bias    | UNEXPECTED | 
+lm_head.layer_norm.weight  | UNEXPECTED | 
+lm_head.dense.weight       | UNEXPECTED | 
+classifier.dense.bias      | MISSING    | 
+classifier.out_proj.bias   | MISSING    | 
+classifier.out_proj.weight | MISSING    | 
+classifier.dense.weight    | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+[load] loading tokenizer (max_len=256)...
+[2026-07-18 00:41:47,906][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/roberta-base/resolve/main/config.json "HTTP/1.1 200 OK"
+[2026-07-18 00:41:47,928][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/roberta-base/resolve/main/tokenizer_config.json "HTTP/1.1 200 OK"
+[2026-07-18 00:41:47,948][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/roberta-base/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 307 Temporary Redirect"
+[2026-07-18 00:41:47,966][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/FacebookAI/roberta-base/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+[2026-07-18 00:41:47,983][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/roberta-base/tree/main?recursive=true&expand=false "HTTP/1.1 307 Temporary Redirect"
+[2026-07-18 00:41:48,004][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/FacebookAI/roberta-base/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+[load] model and tokenizer ready.
+Loading training data
+Training data loaded.
+
+[fit] model=roberta-base | classes=23 | epochs=10 | patience=3
+[fit] lr=5.0e-05 | warmup=208 steps (6% of 3480)
+----------------------------------------------------------------------
+
+[epoch 1/10]
+  train loss : 1.9046E+00
+  val loss   : 1.0744E+00  |  lr: 4.79e-05
+  checkpoint : val loss improved → 1.0744E+00 (saved)
+
+[epoch 2/10]
+  train loss : 9.0343E-01
+  val loss   : 8.9808E-01  |  lr: 4.25e-05
+  checkpoint : val loss improved → 8.9808E-01 (saved)
+
+[epoch 3/10]
+  train loss : 6.1840E-01
+  val loss   : 8.5424E-01  |  lr: 3.72e-05
+  checkpoint : val loss improved → 8.5424E-01 (saved)
+
+[epoch 4/10]
+  train loss : 4.3269E-01
+  val loss   : 8.9714E-01  |  lr: 3.19e-05
+  patience   : 0/3
+
+[epoch 5/10]
+  train loss : 3.0106E-01
+  val loss   : 9.0350E-01  |  lr: 2.66e-05
+  patience   : 1/3
+
+[epoch 6/10]
+  train loss : 2.0411E-01
+  val loss   : 9.5151E-01  |  lr: 2.13e-05
+  patience   : 2/3
+
+[epoch 7/10]
+  train loss : 1.3529E-01
+  val loss   : 1.0015E+00  |  lr: 1.60e-05
+  patience   : 3/3
+
+[fit] early stopping triggered at epoch 7.
+[fit] training complete in 723.6s
+0.8126706717640634 0.7419257807715472
+Saving proba...
+Proba Saved
+[unsupervised-is] fold=1 | train=12354 | test=1831
+[init] logging dir: logs/roberta/ohsumed_autoencoder-is/
+Max Class =22
+Classes in y_train: 23
+Classes in y_val: 23
+[load] loading model 'roberta-base' (23 labels)...
+[2026-07-18 00:54:04,748][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/roberta-base/resolve/main/config.json "HTTP/1.1 200 OK"
+[2026-07-18 00:54:04,767][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/roberta-base/resolve/main/config.json "HTTP/1.1 200 OK"
+Loading weights:   0%|          | 0/197 [00:00<?, ?it/s]Loading weights:  99%|█████████▉| 196/197 [00:00<00:00, 1939.82it/s]Loading weights: 100%|██████████| 197/197 [00:00<00:00, 1942.69it/s]
+[transformers] [1mRobertaForSequenceClassification LOAD REPORT[0m from: roberta-base
+Key                        | Status     | 
+---------------------------+------------+-
+lm_head.bias               | UNEXPECTED | 
+lm_head.dense.bias         | UNEXPECTED | 
+lm_head.layer_norm.bias    | UNEXPECTED | 
+lm_head.layer_norm.weight  | UNEXPECTED | 
+lm_head.dense.weight       | UNEXPECTED | 
+classifier.dense.bias      | MISSING    | 
+classifier.out_proj.bias   | MISSING    | 
+classifier.out_proj.weight | MISSING    | 
+classifier.dense.weight    | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+[load] loading tokenizer (max_len=256)...
+[2026-07-18 00:54:04,951][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/roberta-base/resolve/main/config.json "HTTP/1.1 200 OK"
+[2026-07-18 00:54:04,971][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/roberta-base/resolve/main/tokenizer_config.json "HTTP/1.1 200 OK"
+[2026-07-18 00:54:04,994][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/roberta-base/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 307 Temporary Redirect"
+[2026-07-18 00:54:05,013][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/FacebookAI/roberta-base/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+[2026-07-18 00:54:05,031][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/roberta-base/tree/main?recursive=true&expand=false "HTTP/1.1 307 Temporary Redirect"
+[2026-07-18 00:54:05,051][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/FacebookAI/roberta-base/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+[load] model and tokenizer ready.
+Loading training data
+Training data loaded.
+
+[fit] model=roberta-base | classes=23 | epochs=10 | patience=3
+[fit] lr=5.0e-05 | warmup=208 steps (6% of 3480)
+----------------------------------------------------------------------
+
+[epoch 1/10]
+  train loss : 1.8664E+00
+  val loss   : 1.0082E+00  |  lr: 4.79e-05
+  checkpoint : val loss improved → 1.0082E+00 (saved)
+
+[epoch 2/10]
+  train loss : 8.9025E-01
+  val loss   : 7.8770E-01  |  lr: 4.25e-05
+  checkpoint : val loss improved → 7.8770E-01 (saved)
+
+[epoch 3/10]
+  train loss : 5.9108E-01
+  val loss   : 8.2896E-01  |  lr: 3.72e-05
+  patience   : 0/3
+
+[epoch 4/10]
+  train loss : 4.1103E-01
+  val loss   : 8.6200E-01  |  lr: 3.19e-05
+  patience   : 1/3
+
+[epoch 5/10]
+  train loss : 2.7658E-01
+  val loss   : 8.9857E-01  |  lr: 2.66e-05
+  patience   : 2/3
+
+[epoch 6/10]
+  train loss : 1.9219E-01
+  val loss   : 9.8785E-01  |  lr: 2.13e-05
+  patience   : 3/3
+
+[fit] early stopping triggered at epoch 6.
+[fit] training complete in 619.6s
+0.8022938285090114 0.7347074824292986
+Saving proba...
+Proba Saved
+[unsupervised-is] fold=2 | train=12355 | test=1830
+[init] logging dir: logs/roberta/ohsumed_autoencoder-is/
+Max Class =22
+Classes in y_train: 23
+Classes in y_val: 23
+[load] loading model 'roberta-base' (23 labels)...
+[2026-07-18 01:04:35,792][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/roberta-base/resolve/main/config.json "HTTP/1.1 200 OK"
+[2026-07-18 01:04:35,854][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/roberta-base/resolve/main/config.json "HTTP/1.1 200 OK"
+Loading weights:   0%|          | 0/197 [00:00<?, ?it/s]Loading weights: 100%|██████████| 197/197 [00:00<00:00, 2403.81it/s]
+[transformers] [1mRobertaForSequenceClassification LOAD REPORT[0m from: roberta-base
+Key                        | Status     | 
+---------------------------+------------+-
+lm_head.bias               | UNEXPECTED | 
+lm_head.dense.bias         | UNEXPECTED | 
+lm_head.layer_norm.bias    | UNEXPECTED | 
+lm_head.layer_norm.weight  | UNEXPECTED | 
+lm_head.dense.weight       | UNEXPECTED | 
+classifier.dense.bias      | MISSING    | 
+classifier.out_proj.bias   | MISSING    | 
+classifier.out_proj.weight | MISSING    | 
+classifier.dense.weight    | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+[load] loading tokenizer (max_len=256)...
+[2026-07-18 01:04:36,016][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/roberta-base/resolve/main/config.json "HTTP/1.1 200 OK"
+[2026-07-18 01:04:36,036][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/roberta-base/resolve/main/tokenizer_config.json "HTTP/1.1 200 OK"
+[2026-07-18 01:04:36,057][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/roberta-base/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 307 Temporary Redirect"
+[2026-07-18 01:04:36,076][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/FacebookAI/roberta-base/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+[2026-07-18 01:04:36,092][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/roberta-base/tree/main?recursive=true&expand=false "HTTP/1.1 307 Temporary Redirect"
+[2026-07-18 01:04:36,112][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/FacebookAI/roberta-base/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+[load] model and tokenizer ready.
+Loading training data
+Training data loaded.
+
+[fit] model=roberta-base | classes=23 | epochs=10 | patience=3
+[fit] lr=5.0e-05 | warmup=208 steps (6% of 3480)
+----------------------------------------------------------------------
+
+[epoch 1/10]
+  train loss : 1.8507E+00
+  val loss   : 1.1184E+00  |  lr: 4.79e-05
+  checkpoint : val loss improved → 1.1184E+00 (saved)
+
+[epoch 2/10]
+  train loss : 8.9258E-01
+  val loss   : 8.8375E-01  |  lr: 4.25e-05
+  checkpoint : val loss improved → 8.8375E-01 (saved)
+
+[epoch 3/10]
+  train loss : 5.9776E-01
+  val loss   : 8.5091E-01  |  lr: 3.72e-05
+  checkpoint : val loss improved → 8.5091E-01 (saved)
+
+[epoch 4/10]
+  train loss : 4.0668E-01
+  val loss   : 9.3423E-01  |  lr: 3.19e-05
+  patience   : 0/3
+
+[epoch 5/10]
+  train loss : 2.7734E-01
+  val loss   : 1.0048E+00  |  lr: 2.66e-05
+  patience   : 1/3
+
+[epoch 6/10]
+  train loss : 1.8396E-01
+  val loss   : 1.1364E+00  |  lr: 2.13e-05
+  patience   : 2/3
+
+[epoch 7/10]
+  train loss : 1.1937E-01
+  val loss   : 1.1149E+00  |  lr: 1.60e-05
+  patience   : 3/3
+
+[fit] early stopping triggered at epoch 7.
+[fit] training complete in 721.6s
+0.807103825136612 0.7454327794460857
+Saving proba...
+Proba Saved
+[unsupervised-is] fold=3 | train=12355 | test=1830
+[init] logging dir: logs/roberta/ohsumed_autoencoder-is/
+Max Class =22
+Classes in y_train: 23
+Classes in y_val: 23
+[load] loading model 'roberta-base' (23 labels)...
+[2026-07-18 01:16:50,997][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/roberta-base/resolve/main/config.json "HTTP/1.1 200 OK"
+[2026-07-18 01:16:51,018][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/roberta-base/resolve/main/config.json "HTTP/1.1 200 OK"
+Loading weights:   0%|          | 0/197 [00:00<?, ?it/s]Loading weights: 100%|██████████| 197/197 [00:00<00:00, 2017.03it/s]
+[transformers] [1mRobertaForSequenceClassification LOAD REPORT[0m from: roberta-base
+Key                        | Status     | 
+---------------------------+------------+-
+lm_head.bias               | UNEXPECTED | 
+lm_head.dense.bias         | UNEXPECTED | 
+lm_head.layer_norm.bias    | UNEXPECTED | 
+lm_head.layer_norm.weight  | UNEXPECTED | 
+lm_head.dense.weight       | UNEXPECTED | 
+classifier.dense.bias      | MISSING    | 
+classifier.out_proj.bias   | MISSING    | 
+classifier.out_proj.weight | MISSING    | 
+classifier.dense.weight    | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+[load] loading tokenizer (max_len=256)...
+[2026-07-18 01:16:51,200][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/roberta-base/resolve/main/config.json "HTTP/1.1 200 OK"
+[2026-07-18 01:16:51,229][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/roberta-base/resolve/main/tokenizer_config.json "HTTP/1.1 200 OK"
+[2026-07-18 01:16:51,250][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/roberta-base/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 307 Temporary Redirect"
+[2026-07-18 01:16:51,270][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/FacebookAI/roberta-base/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+[2026-07-18 01:16:51,286][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/roberta-base/tree/main?recursive=true&expand=false "HTTP/1.1 307 Temporary Redirect"
+[2026-07-18 01:16:51,306][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/FacebookAI/roberta-base/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+[load] model and tokenizer ready.
+Loading training data
+Training data loaded.
+
+[fit] model=roberta-base | classes=23 | epochs=10 | patience=3
+[fit] lr=5.0e-05 | warmup=208 steps (6% of 3480)
+----------------------------------------------------------------------
+
+[epoch 1/10]
+  train loss : 1.8292E+00
+  val loss   : 1.0654E+00  |  lr: 4.79e-05
+  checkpoint : val loss improved → 1.0654E+00 (saved)
+
+[epoch 2/10]
+  train loss : 8.8377E-01
+  val loss   : 9.2577E-01  |  lr: 4.25e-05
+  checkpoint : val loss improved → 9.2577E-01 (saved)
+
+[epoch 3/10]
+  train loss : 5.9523E-01
+  val loss   : 9.1165E-01  |  lr: 3.72e-05
+  checkpoint : val loss improved → 9.1165E-01 (saved)
+
+[epoch 4/10]
+  train loss : 4.0875E-01
+  val loss   : 9.0850E-01  |  lr: 3.19e-05
+  checkpoint : val loss improved → 9.0850E-01 (saved)
+
+[epoch 5/10]
+  train loss : 2.9003E-01
+  val loss   : 9.7032E-01  |  lr: 2.66e-05
+  patience   : 0/3
+
+[epoch 6/10]
+  train loss : 1.9666E-01
+  val loss   : 1.0457E+00  |  lr: 2.13e-05
+  patience   : 1/3
+
+[epoch 7/10]
+  train loss : 1.3858E-01
+  val loss   : 1.1085E+00  |  lr: 1.60e-05
+  patience   : 2/3
+
+[epoch 8/10]
+  train loss : 8.9393E-02
+  val loss   : 1.2298E+00  |  lr: 1.06e-05
+  patience   : 3/3
+
+[fit] early stopping triggered at epoch 8.
+[fit] training complete in 825.9s
+0.8131147540983606 0.7554010550725725
+Saving proba...
+Proba Saved
+[unsupervised-is] fold=4 | train=12355 | test=1830
+[init] logging dir: logs/roberta/ohsumed_autoencoder-is/
+Max Class =22
+Classes in y_train: 23
+Classes in y_val: 23
+[load] loading model 'roberta-base' (23 labels)...
+[2026-07-18 01:30:48,219][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/roberta-base/resolve/main/config.json "HTTP/1.1 200 OK"
+[2026-07-18 01:30:48,240][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/roberta-base/resolve/main/config.json "HTTP/1.1 200 OK"
+Loading weights:   0%|          | 0/197 [00:00<?, ?it/s]Loading weights: 100%|██████████| 197/197 [00:00<00:00, 2608.36it/s]
+[transformers] [1mRobertaForSequenceClassification LOAD REPORT[0m from: roberta-base
+Key                        | Status     | 
+---------------------------+------------+-
+lm_head.bias               | UNEXPECTED | 
+lm_head.dense.bias         | UNEXPECTED | 
+lm_head.layer_norm.bias    | UNEXPECTED | 
+lm_head.layer_norm.weight  | UNEXPECTED | 
+lm_head.dense.weight       | UNEXPECTED | 
+classifier.dense.bias      | MISSING    | 
+classifier.out_proj.bias   | MISSING    | 
+classifier.out_proj.weight | MISSING    | 
+classifier.dense.weight    | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+[load] loading tokenizer (max_len=256)...
+[2026-07-18 01:30:48,393][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/roberta-base/resolve/main/config.json "HTTP/1.1 200 OK"
+[2026-07-18 01:30:48,417][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/roberta-base/resolve/main/tokenizer_config.json "HTTP/1.1 200 OK"
+[2026-07-18 01:30:48,433][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/roberta-base/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 307 Temporary Redirect"
+[2026-07-18 01:30:48,451][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/FacebookAI/roberta-base/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+[2026-07-18 01:30:48,470][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/roberta-base/tree/main?recursive=true&expand=false "HTTP/1.1 307 Temporary Redirect"
+[2026-07-18 01:30:48,490][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/FacebookAI/roberta-base/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+[load] model and tokenizer ready.
+Loading training data
+Training data loaded.
+
+[fit] model=roberta-base | classes=23 | epochs=10 | patience=3
+[fit] lr=5.0e-05 | warmup=208 steps (6% of 3480)
+----------------------------------------------------------------------
+
+[epoch 1/10]
+  train loss : 1.8808E+00
+  val loss   : 1.2344E+00  |  lr: 4.79e-05
+  checkpoint : val loss improved → 1.2344E+00 (saved)
+
+[epoch 2/10]
+  train loss : 9.0255E-01
+  val loss   : 1.0542E+00  |  lr: 4.25e-05
+  checkpoint : val loss improved → 1.0542E+00 (saved)
+
+[epoch 3/10]
+  train loss : 6.2541E-01
+  val loss   : 9.8710E-01  |  lr: 3.72e-05
+  checkpoint : val loss improved → 9.8710E-01 (saved)
+
+[epoch 4/10]
+  train loss : 4.3320E-01
+  val loss   : 9.7681E-01  |  lr: 3.19e-05
+  checkpoint : val loss improved → 9.7681E-01 (saved)
+
+[epoch 5/10]
+  train loss : 3.0013E-01
+  val loss   : 1.0950E+00  |  lr: 2.66e-05
+  patience   : 0/3
+
+[epoch 6/10]
+  train loss : 2.0622E-01
+  val loss   : 1.2322E+00  |  lr: 2.13e-05
+  patience   : 1/3
+
+[epoch 7/10]
+  train loss : 1.3762E-01
+  val loss   : 1.3111E+00  |  lr: 1.60e-05
+  patience   : 2/3
+
+[epoch 8/10]
+  train loss : 9.7664E-02
+  val loss   : 1.2994E+00  |  lr: 1.06e-05
+  patience   : 3/3
+
+[fit] early stopping triggered at epoch 8.
+[fit] training complete in 826.1s
+0.7950819672131147 0.7305830997833023
+Saving proba...
+Proba Saved
+[unsupervised-is] fold=5 | train=12355 | test=1830
+[init] logging dir: logs/roberta/ohsumed_autoencoder-is/
+Max Class =22
+Classes in y_train: 23
+Classes in y_val: 23
+[load] loading model 'roberta-base' (23 labels)...
+[2026-07-18 01:44:45,717][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/roberta-base/resolve/main/config.json "HTTP/1.1 200 OK"
+[2026-07-18 01:44:45,736][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/roberta-base/resolve/main/config.json "HTTP/1.1 200 OK"
+Loading weights:   0%|          | 0/197 [00:00<?, ?it/s]Loading weights: 100%|██████████| 197/197 [00:00<00:00, 1980.90it/s]
+[transformers] [1mRobertaForSequenceClassification LOAD REPORT[0m from: roberta-base
+Key                        | Status     | 
+---------------------------+------------+-
+lm_head.bias               | UNEXPECTED | 
+lm_head.dense.bias         | UNEXPECTED | 
+lm_head.layer_norm.bias    | UNEXPECTED | 
+lm_head.layer_norm.weight  | UNEXPECTED | 
+lm_head.dense.weight       | UNEXPECTED | 
+classifier.dense.bias      | MISSING    | 
+classifier.out_proj.bias   | MISSING    | 
+classifier.out_proj.weight | MISSING    | 
+classifier.dense.weight    | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+[load] loading tokenizer (max_len=256)...
+[2026-07-18 01:44:45,919][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/roberta-base/resolve/main/config.json "HTTP/1.1 200 OK"
+[2026-07-18 01:44:45,943][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/roberta-base/resolve/main/tokenizer_config.json "HTTP/1.1 200 OK"
+[2026-07-18 01:44:45,962][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/roberta-base/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 307 Temporary Redirect"
+[2026-07-18 01:44:45,979][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/FacebookAI/roberta-base/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+[2026-07-18 01:44:45,997][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/roberta-base/tree/main?recursive=true&expand=false "HTTP/1.1 307 Temporary Redirect"
+[2026-07-18 01:44:46,015][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/FacebookAI/roberta-base/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+[load] model and tokenizer ready.
+Loading training data
+Training data loaded.
+
+[fit] model=roberta-base | classes=23 | epochs=10 | patience=3
+[fit] lr=5.0e-05 | warmup=208 steps (6% of 3480)
+----------------------------------------------------------------------
+
+[epoch 1/10]
+  train loss : 1.8285E+00
+  val loss   : 1.0368E+00  |  lr: 4.79e-05
+  checkpoint : val loss improved → 1.0368E+00 (saved)
+
+[epoch 2/10]
+  train loss : 8.9370E-01
+  val loss   : 9.0958E-01  |  lr: 4.25e-05
+  checkpoint : val loss improved → 9.0958E-01 (saved)
+
+[epoch 3/10]
+  train loss : 6.0157E-01
+  val loss   : 8.7872E-01  |  lr: 3.72e-05
+  checkpoint : val loss improved → 8.7872E-01 (saved)
+
+[epoch 4/10]
+  train loss : 4.1954E-01
+  val loss   : 9.8439E-01  |  lr: 3.19e-05
+  patience   : 0/3
+
+[epoch 5/10]
+  train loss : 2.9747E-01
+  val loss   : 9.6839E-01  |  lr: 2.66e-05
+  patience   : 1/3
+
+[epoch 6/10]
+  train loss : 2.0096E-01
+  val loss   : 1.0746E+00  |  lr: 2.13e-05
+  patience   : 2/3
+
+[epoch 7/10]
+  train loss : 1.3402E-01
+  val loss   : 1.1705E+00  |  lr: 1.60e-05
+  patience   : 3/3
+
+[fit] early stopping triggered at epoch 7.
+[fit] training complete in 721.7s
+0.8174863387978142 0.7574673580855737
+Saving proba...
+Proba Saved
+[unsupervised-is] fold=6 | train=12355 | test=1830
+[init] logging dir: logs/roberta/ohsumed_autoencoder-is/
+Max Class =22
+Classes in y_train: 23
+Classes in y_val: 23
+[load] loading model 'roberta-base' (23 labels)...
+[2026-07-18 01:56:58,705][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/roberta-base/resolve/main/config.json "HTTP/1.1 200 OK"
+[2026-07-18 01:56:58,725][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/roberta-base/resolve/main/config.json "HTTP/1.1 200 OK"
+Loading weights:   0%|          | 0/197 [00:00<?, ?it/s]Loading weights: 100%|██████████| 197/197 [00:00<00:00, 2515.54it/s]
+[transformers] [1mRobertaForSequenceClassification LOAD REPORT[0m from: roberta-base
+Key                        | Status     | 
+---------------------------+------------+-
+lm_head.bias               | UNEXPECTED | 
+lm_head.dense.bias         | UNEXPECTED | 
+lm_head.layer_norm.bias    | UNEXPECTED | 
+lm_head.layer_norm.weight  | UNEXPECTED | 
+lm_head.dense.weight       | UNEXPECTED | 
+classifier.dense.bias      | MISSING    | 
+classifier.out_proj.bias   | MISSING    | 
+classifier.out_proj.weight | MISSING    | 
+classifier.dense.weight    | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+[load] loading tokenizer (max_len=256)...
+[2026-07-18 01:56:58,888][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/roberta-base/resolve/main/config.json "HTTP/1.1 200 OK"
+[2026-07-18 01:56:58,912][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/roberta-base/resolve/main/tokenizer_config.json "HTTP/1.1 200 OK"
+[2026-07-18 01:56:58,932][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/roberta-base/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 307 Temporary Redirect"
+[2026-07-18 01:56:58,947][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/FacebookAI/roberta-base/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+[2026-07-18 01:56:58,965][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/roberta-base/tree/main?recursive=true&expand=false "HTTP/1.1 307 Temporary Redirect"
+[2026-07-18 01:56:58,987][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/FacebookAI/roberta-base/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+[load] model and tokenizer ready.
+Loading training data
+Training data loaded.
+
+[fit] model=roberta-base | classes=23 | epochs=10 | patience=3
+[fit] lr=5.0e-05 | warmup=208 steps (6% of 3480)
+----------------------------------------------------------------------
+
+[epoch 1/10]
+  train loss : 1.8135E+00
+  val loss   : 1.0580E+00  |  lr: 4.79e-05
+  checkpoint : val loss improved → 1.0580E+00 (saved)
+
+[epoch 2/10]
+  train loss : 8.8268E-01
+  val loss   : 8.1727E-01  |  lr: 4.25e-05
+  checkpoint : val loss improved → 8.1727E-01 (saved)
+
+[epoch 3/10]
+  train loss : 5.8819E-01
+  val loss   : 7.7701E-01  |  lr: 3.72e-05
+  checkpoint : val loss improved → 7.7701E-01 (saved)
+
+[epoch 4/10]
+  train loss : 4.0403E-01
+  val loss   : 8.0601E-01  |  lr: 3.19e-05
+  patience   : 0/3
+
+[epoch 5/10]
+  train loss : 2.7242E-01
+  val loss   : 8.2355E-01  |  lr: 2.66e-05
+  patience   : 1/3
+
+[epoch 6/10]
+  train loss : 1.8688E-01
+  val loss   : 8.5154E-01  |  lr: 2.13e-05
+  patience   : 2/3
+
+[epoch 7/10]
+  train loss : 1.2854E-01
+  val loss   : 9.8153E-01  |  lr: 1.60e-05
+  patience   : 3/3
+
+[fit] early stopping triggered at epoch 7.
+[fit] training complete in 721.9s
+0.8060109289617486 0.7677481911421976
+Saving proba...
+Proba Saved
+[unsupervised-is] fold=7 | train=12355 | test=1830
+[init] logging dir: logs/roberta/ohsumed_autoencoder-is/
+Max Class =22
+Classes in y_train: 23
+Classes in y_val: 23
+[load] loading model 'roberta-base' (23 labels)...
+[2026-07-18 02:09:11,958][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/roberta-base/resolve/main/config.json "HTTP/1.1 200 OK"
+[2026-07-18 02:09:11,979][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/roberta-base/resolve/main/config.json "HTTP/1.1 200 OK"
+Loading weights:   0%|          | 0/197 [00:00<?, ?it/s]Loading weights: 100%|██████████| 197/197 [00:00<00:00, 1963.91it/s]Loading weights: 100%|██████████| 197/197 [00:00<00:00, 1958.79it/s]
+[transformers] [1mRobertaForSequenceClassification LOAD REPORT[0m from: roberta-base
+Key                        | Status     | 
+---------------------------+------------+-
+lm_head.bias               | UNEXPECTED | 
+lm_head.dense.bias         | UNEXPECTED | 
+lm_head.layer_norm.bias    | UNEXPECTED | 
+lm_head.layer_norm.weight  | UNEXPECTED | 
+lm_head.dense.weight       | UNEXPECTED | 
+classifier.dense.bias      | MISSING    | 
+classifier.out_proj.bias   | MISSING    | 
+classifier.out_proj.weight | MISSING    | 
+classifier.dense.weight    | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+[load] loading tokenizer (max_len=256)...
+[2026-07-18 02:09:12,161][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/roberta-base/resolve/main/config.json "HTTP/1.1 200 OK"
+[2026-07-18 02:09:12,182][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/roberta-base/resolve/main/tokenizer_config.json "HTTP/1.1 200 OK"
+[2026-07-18 02:09:12,203][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/roberta-base/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 307 Temporary Redirect"
+[2026-07-18 02:09:12,223][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/FacebookAI/roberta-base/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+[2026-07-18 02:09:12,242][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/roberta-base/tree/main?recursive=true&expand=false "HTTP/1.1 307 Temporary Redirect"
+[2026-07-18 02:09:12,262][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/FacebookAI/roberta-base/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+[load] model and tokenizer ready.
+Loading training data
+Training data loaded.
+
+[fit] model=roberta-base | classes=23 | epochs=10 | patience=3
+[fit] lr=5.0e-05 | warmup=208 steps (6% of 3480)
+----------------------------------------------------------------------
+
+[epoch 1/10]
+  train loss : 1.8532E+00
+  val loss   : 1.1373E+00  |  lr: 4.79e-05
+  checkpoint : val loss improved → 1.1373E+00 (saved)
+
+[epoch 2/10]
+  train loss : 8.7894E-01
+  val loss   : 1.0158E+00  |  lr: 4.25e-05
+  checkpoint : val loss improved → 1.0158E+00 (saved)
+
+[epoch 3/10]
+  train loss : 5.7921E-01
+  val loss   : 9.1777E-01  |  lr: 3.72e-05
+  checkpoint : val loss improved → 9.1777E-01 (saved)
+
+[epoch 4/10]
+  train loss : 3.9466E-01
+  val loss   : 9.1136E-01  |  lr: 3.19e-05
+  checkpoint : val loss improved → 9.1136E-01 (saved)
+
+[epoch 5/10]
+  train loss : 2.7149E-01
+  val loss   : 9.4652E-01  |  lr: 2.66e-05
+  patience   : 0/3
+
+[epoch 6/10]
+  train loss : 1.7986E-01
+  val loss   : 9.8432E-01  |  lr: 2.13e-05
+  patience   : 1/3
+
+[epoch 7/10]
+  train loss : 1.1900E-01
+  val loss   : 1.0332E+00  |  lr: 1.60e-05
+  patience   : 2/3
+
+[epoch 8/10]
+  train loss : 7.7166E-02
+  val loss   : 1.0840E+00  |  lr: 1.06e-05
+  patience   : 3/3
+
+[fit] early stopping triggered at epoch 8.
+[fit] training complete in 828.7s
+0.8180327868852459 0.7596013384355867
+Saving proba...
+Proba Saved
+[unsupervised-is] fold=8 | train=12355 | test=1830
+[init] logging dir: logs/roberta/ohsumed_autoencoder-is/
+Max Class =22
+Classes in y_train: 23
+Classes in y_val: 23
+[load] loading model 'roberta-base' (23 labels)...
+[2026-07-18 02:23:11,950][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/roberta-base/resolve/main/config.json "HTTP/1.1 200 OK"
+[2026-07-18 02:23:11,983][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/roberta-base/resolve/main/config.json "HTTP/1.1 200 OK"
+Loading weights:   0%|          | 0/197 [00:00<?, ?it/s]Loading weights: 100%|██████████| 197/197 [00:00<00:00, 2666.35it/s]
+[transformers] [1mRobertaForSequenceClassification LOAD REPORT[0m from: roberta-base
+Key                        | Status     | 
+---------------------------+------------+-
+lm_head.bias               | UNEXPECTED | 
+lm_head.dense.bias         | UNEXPECTED | 
+lm_head.layer_norm.bias    | UNEXPECTED | 
+lm_head.layer_norm.weight  | UNEXPECTED | 
+lm_head.dense.weight       | UNEXPECTED | 
+classifier.dense.bias      | MISSING    | 
+classifier.out_proj.bias   | MISSING    | 
+classifier.out_proj.weight | MISSING    | 
+classifier.dense.weight    | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+[load] loading tokenizer (max_len=256)...
+[2026-07-18 02:23:12,831][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/roberta-base/resolve/main/config.json "HTTP/1.1 200 OK"
+[2026-07-18 02:23:12,852][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/roberta-base/resolve/main/tokenizer_config.json "HTTP/1.1 200 OK"
+[2026-07-18 02:23:12,875][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/roberta-base/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 307 Temporary Redirect"
+[2026-07-18 02:23:12,893][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/FacebookAI/roberta-base/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+[2026-07-18 02:23:12,911][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/roberta-base/tree/main?recursive=true&expand=false "HTTP/1.1 307 Temporary Redirect"
+[2026-07-18 02:23:12,932][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/FacebookAI/roberta-base/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+[load] model and tokenizer ready.
+Loading training data
+Training data loaded.
+
+[fit] model=roberta-base | classes=23 | epochs=10 | patience=3
+[fit] lr=5.0e-05 | warmup=208 steps (6% of 3480)
+----------------------------------------------------------------------
+
+[epoch 1/10]
+  train loss : 1.8239E+00
+  val loss   : 1.0678E+00  |  lr: 4.79e-05
+  checkpoint : val loss improved → 1.0678E+00 (saved)
+
+[epoch 2/10]
+  train loss : 8.9211E-01
+  val loss   : 8.8182E-01  |  lr: 4.25e-05
+  checkpoint : val loss improved → 8.8182E-01 (saved)
+
+[epoch 3/10]
+  train loss : 5.9877E-01
+  val loss   : 7.8850E-01  |  lr: 3.72e-05
+  checkpoint : val loss improved → 7.8850E-01 (saved)
+
+[epoch 4/10]
+  train loss : 4.1558E-01
+  val loss   : 8.0384E-01  |  lr: 3.19e-05
+  patience   : 0/3
+
+[epoch 5/10]
+  train loss : 2.7913E-01
+  val loss   : 8.2910E-01  |  lr: 2.66e-05
+  patience   : 1/3
+
+[epoch 6/10]
+  train loss : 1.8754E-01
+  val loss   : 9.2794E-01  |  lr: 2.13e-05
+  patience   : 2/3
+
+[epoch 7/10]
+  train loss : 1.2463E-01
+  val loss   : 9.4572E-01  |  lr: 1.60e-05
+  patience   : 3/3
+
+[fit] early stopping triggered at epoch 7.
+[fit] training complete in 722.5s
+0.8109289617486338 0.748715045618394
+Saving proba...
+Proba Saved
+[unsupervised-is] fold=9 | train=12355 | test=1830
+[init] logging dir: logs/roberta/ohsumed_autoencoder-is/
+Max Class =22
+Classes in y_train: 23
+Classes in y_val: 23
+[load] loading model 'roberta-base' (23 labels)...
+[2026-07-18 02:35:25,768][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/roberta-base/resolve/main/config.json "HTTP/1.1 200 OK"
+[2026-07-18 02:35:25,790][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/roberta-base/resolve/main/config.json "HTTP/1.1 200 OK"
+Loading weights:   0%|          | 0/197 [00:00<?, ?it/s]Loading weights: 100%|██████████| 197/197 [00:00<00:00, 1987.80it/s]
+[transformers] [1mRobertaForSequenceClassification LOAD REPORT[0m from: roberta-base
+Key                        | Status     | 
+---------------------------+------------+-
+lm_head.bias               | UNEXPECTED | 
+lm_head.dense.bias         | UNEXPECTED | 
+lm_head.layer_norm.bias    | UNEXPECTED | 
+lm_head.layer_norm.weight  | UNEXPECTED | 
+lm_head.dense.weight       | UNEXPECTED | 
+classifier.dense.bias      | MISSING    | 
+classifier.out_proj.bias   | MISSING    | 
+classifier.out_proj.weight | MISSING    | 
+classifier.dense.weight    | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+[load] loading tokenizer (max_len=256)...
+[2026-07-18 02:35:25,972][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/roberta-base/resolve/main/config.json "HTTP/1.1 200 OK"
+[2026-07-18 02:35:25,997][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/roberta-base/resolve/main/tokenizer_config.json "HTTP/1.1 200 OK"
+[2026-07-18 02:35:26,019][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/roberta-base/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 307 Temporary Redirect"
+[2026-07-18 02:35:26,036][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/FacebookAI/roberta-base/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+[2026-07-18 02:35:26,055][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/roberta-base/tree/main?recursive=true&expand=false "HTTP/1.1 307 Temporary Redirect"
+[2026-07-18 02:35:26,079][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/FacebookAI/roberta-base/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+[load] model and tokenizer ready.
+Loading training data
+Training data loaded.
+
+[fit] model=roberta-base | classes=23 | epochs=10 | patience=3
+[fit] lr=5.0e-05 | warmup=208 steps (6% of 3480)
+----------------------------------------------------------------------
+
+[epoch 1/10]
+  train loss : 1.8898E+00
+  val loss   : 1.1162E+00  |  lr: 4.79e-05
+  checkpoint : val loss improved → 1.1162E+00 (saved)
+
+[epoch 2/10]
+  train loss : 9.2112E-01
+  val loss   : 9.7540E-01  |  lr: 4.25e-05
+  checkpoint : val loss improved → 9.7540E-01 (saved)
+
+[epoch 3/10]
+  train loss : 6.2429E-01
+  val loss   : 9.4137E-01  |  lr: 3.72e-05
+  checkpoint : val loss improved → 9.4137E-01 (saved)
+
+[epoch 4/10]
+  train loss : 4.3275E-01
+  val loss   : 9.4604E-01  |  lr: 3.19e-05
+  patience   : 0/3
+
+[epoch 5/10]
+  train loss : 2.9142E-01
+  val loss   : 9.7856E-01  |  lr: 2.66e-05
+  patience   : 1/3
+
+[epoch 6/10]
+  train loss : 2.0901E-01
+  val loss   : 1.1000E+00  |  lr: 2.13e-05
+  patience   : 2/3
+
+[epoch 7/10]
+  train loss : 1.3824E-01
+  val loss   : 1.0731E+00  |  lr: 1.60e-05
+  patience   : 3/3
+
+[fit] early stopping triggered at epoch 7.
+[fit] training complete in 722.6s
+0.7950819672131147 0.736433483351548
+Saving proba...
+Proba Saved
+Done.
