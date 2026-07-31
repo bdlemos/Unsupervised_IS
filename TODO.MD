@@ -1,0 +1,1 @@
+- [x] Deixar os caminhos todos relativos e nao hard coded

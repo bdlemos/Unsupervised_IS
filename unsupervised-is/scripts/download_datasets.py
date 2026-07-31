@@ -276,10 +276,11 @@ def main() -> None:
         nargs="*",
         help="Names of datasets to download (default: all). E.g.: webkb reuters",
     )
+    default_data_dir = os.environ.get("DATASETS_DIR", str(Path(__file__).resolve().parent.parent.parent / "datasets"))
     parser.add_argument(
         "--data-dir",
-        default="/data/bernardolemos/datasets",
-        help="Base directory for datasets (default: /data/bernardolemos/datasets/)",
+        default=default_data_dir,
+        help=f"Base directory for datasets (default: {default_data_dir})",
     )
     args = parser.parse_args()
 

@@ -19,9 +19,9 @@ Pipeline completo de seleção de instâncias não-supervisionada (`unsupervised
 ```
 
 **Diretórios Externos (Data / Results):**
-Os dados e resultados ficam obrigatoriamente separados do código-fonte para otimizar os volumes e o cache do Docker. O padrão é:
-- `/data/bernardolemos/datasets`: Onde residem os dados brutos e embeddings gerados (incluindo pastas como `tfidf` e `jina-v5`).
-- `/data/bernardolemos/results`: Onde o pipeline salvará todos os CSVs e outputs estruturados por `inputrep`.
+Os dados e resultados ficam separados do código-fonte ou resolvidos relativamente ao diretório do projeto. O padrão é:
+- `./datasets` (ou `$DATASETS_DIR`): Onde residem os dados brutos e embeddings gerados (incluindo pastas como `tfidf` e `jina-v5`).
+- `./results` (ou `$RESULTS_DIR`): Onde o pipeline salvará todos os CSVs e outputs estruturados por `inputrep`.
 
 ---
 
@@ -30,28 +30,27 @@ Os dados e resultados ficam obrigatoriamente separados do código-fonte para oti
 ### 1. Build da imagem
 
 ```bash
-docker build -t unsupervised-is /data/bernardolemos/
+docker build -t unsupervised-is .
 ```
 
 ### 2. Executar o pipeline (Run Completo)
 
-Com a refatoração, não é mais necessário montar dezenas de pastas com nomes gigantescos de subprojetos. Basta mapear as pastas mãe `datasets` e `results` e o código se resolve por completo.
+Basta mapear as pastas `datasets` e `results` e o código se resolve por completo via variáveis de ambiente ou diretórios padrão.
 
 ```bash
 docker run -d --rm \
   --gpus '"device=1"' \
   --cpus="16" \
   --memory="32g" \
-  -v /data/bernardolemos:/app/host \
-  -v /data/bernardolemos/datasets:/data/bernardolemos/datasets \
-  -v /data/bernardolemos/results:/data/bernardolemos/results \
-  -v /data/bernardolemos/atcBench/logs:/app/atcBench/logs \
+  -v $(pwd):/app/host \
+  -v $(pwd)/datasets:/app/datasets \
+  -v $(pwd)/results:/app/results \
   --name pipeline-run \
   unsupervised-is \
   bash -c 'bash run_pipeline.sh --methods "adaptive-cluster-is" --datasets "trec,ohsumed" --inputrep "jina-v5" 2>&1 | tee /app/host/pipeline_geral.log'
 
 # Acompanhe os logs em tempo real na máquina local:
-tail -f /data/bernardolemos/pipeline_geral.log
+tail -f pipeline_geral.log
 ```
 
 ### Parâmetros disponíveis do `run_pipeline.sh`
@@ -65,7 +64,7 @@ tail -f /data/bernardolemos/pipeline_geral.log
 
 **Métodos disponíveis:** `no-is`, `biois`, `random-is`, `perplexity-is`, `autoencoder-is`, `pca-autoencoder-is`, `gmm-is`, `adaptive-perplexity`, `adaptive-v2-perplexity`, `adaptive-cluster-is`.
 
-**Datasets (auto-descobertos):** Todos os que existirem fisicamente em `/data/bernardolemos/datasets/`.
+**Datasets (auto-descobertos):** Todos os que existirem fisicamente no diretório `$DATASETS_DIR` (padrão: `./datasets/`).
 
 ---
 
@@ -76,7 +75,6 @@ tail -f /data/bernardolemos/pipeline_geral.log
 Com a unificação, existe apenas **um** ambiente virtual.
 
 ```bash
-cd /data/bernardolemos
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
@@ -84,11 +82,9 @@ pip install -r requirements.txt
 
 ### Executar o pipeline
 
-Nenhuma variável de ambiente manual obscura (como antigamente o `UNSUPERVISED_IS_RESOURCES`) é necessária, contanto que as suas pastas `/data/bernardolemos/datasets` e `/data/bernardolemos/results` já existam na máquina física (o script descobre e aponta para elas por padrão).
+Nenhuma variável de ambiente manual obscura é necessária, contanto que as pastas `./datasets` e `./results` (ou via `DATASETS_DIR` e `RESULTS_DIR`) já existam na máquina física (o script descobre e aponta para elas por padrão).
 
 ```bash
-cd /data/bernardolemos
-
 # Run completo em background com salvamento de log
 nohup bash run_pipeline.sh --methods "adaptive-cluster-is" --inputrep "jina-v5" > pipeline_geral.log 2>&1 &
 tail -f pipeline_geral.log
@@ -102,9 +98,9 @@ Com o suporte nativo e dinâmico a diferentes representações de embeddings via
 
 | Path | Conteúdo |
 |---|---|
-| `/data/bernardolemos/results/jina-v5/instance_selection/selection/<dataset>/` | Splits gerados por método na seleção não-supervisionada |
-| `/data/bernardolemos/results/jina-v5/instance_selection/selection_summary.csv` | Resumo de tempo e taxa de redução aplicados a cada método |
-| `/data/bernardolemos/results/jina-v5/classificacao/output/` | Métricas JSON detalhadas do atcBench (classificação em si) por fold |
-| `/data/bernardolemos/results/jina-v5/classificacao/results/results_from_outputs.csv` | CSV consolidado com as métricas de performance finais (macro F1) para o paper |
-| `/data/bernardolemos/results/jina-v5/classificacao/results/times_from_outputs.csv` | CSV consolidado com os tempos absolutos somados de todas as partes do processo (IS + Treino) |
-| `/data/bernardolemos/atcBench/logs/run_<dataset>_<method>.log` | Log verboso individual para os jobs do atcBench |
+| `results/jina-v5/instance_selection/selection/<dataset>/` | Splits gerados por método na seleção não-supervisionada |
+| `results/jina-v5/instance_selection/selection_summary.csv` | Resumo de tempo e taxa de redução aplicados a cada método |
+| `results/jina-v5/classificacao/output/` | Métricas JSON detalhadas do atcBench (classificação em si) por fold |
+| `results/jina-v5/classificacao/results/results_from_outputs.csv` | CSV consolidado com as métricas de performance finais (macro F1) para o paper |
+| `results/jina-v5/classificacao/results/times_from_outputs.csv` | CSV consolidado com os tempos absolutos somados de todas as partes do processo (IS + Treino) |
+| `atcBench/logs/run_<dataset>_<method>.log` | Log verboso individual para os jobs do atcBench |

@@ -25,7 +25,8 @@ from src.main.python.utils.general import get_data
 from src.main.python.iSel.entropy_sublinear_ae_is import EntropySublinearAEIS
 
 def evaluate_dataset(dataset_name, clustering_method, report_file):
-    dataset_path = f'/data/bernardolemos/datasets/{dataset_name}/jina-v5/'
+    datasets_dir = os.environ.get("DATASETS_DIR", os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "datasets")))
+    dataset_path = os.path.join(datasets_dir, dataset_name, "jina-v5")
     plots_dir = os.path.join(os.path.dirname(__file__), 'plots', dataset_name, clustering_method)
     os.makedirs(plots_dir, exist_ok=True)
 
