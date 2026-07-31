@@ -3,6 +3,9 @@ import numpy as np
 from scipy import stats
 import os
 
+# Non-inferiority margin: 2% F1 acceptable drop
+DELTA = 0.02
+
 def holm_bonferroni(p_values):
     """Manual implementation of Holm-Bonferroni correction."""
     p_values = np.array(p_values)
@@ -28,18 +31,30 @@ def holm_bonferroni(p_values):
         
     return orig_order_adj_p
 
-def nadeau_bengio_t_test(diffs, k=10, n_test_n_train_ratio=1/9):
+def nadeau_bengio_ni_test(diffs, delta=DELTA, k=10, n_test_n_train_ratio=1/9):
+    """
+    One-tailed non-inferiority test using Nadeau & Bengio corrected t-test.
+    
+    H₀: mean(d) ≤ -δ  (method A is inferior to B by at least δ)
+    H₁: mean(d) > -δ   (method A is non-inferior to B)
+    
+    t = (mean(d) + δ) / sqrt((1/k + n_test/n_train) * var(d))
+    p = P(T > t | H₀)  (one-tailed, upper)
+    """
     mean_d = np.mean(diffs)
     var_d = np.var(diffs, ddof=1)
     if var_d == 0:
-        if mean_d == 0:
-            return 0.0, 1.0
-        else:
+        if mean_d > -delta:
             return np.inf, 0.0
+        elif mean_d == -delta:
+            return 0.0, 0.5
+        else:
+            return -np.inf, 1.0
     
     denominator = np.sqrt((1/k + n_test_n_train_ratio) * var_d)
-    t_stat = mean_d / denominator
-    p_value = 2 * (1 - stats.t.cdf(abs(t_stat), df=k-1))
+    t_stat = (mean_d + delta) / denominator
+    # One-tailed p-value (upper tail)
+    p_value = 1 - stats.t.cdf(t_stat, df=k-1)
     return t_stat, p_value
 
 def calc_ci(diffs, k=10, n_test_n_train_ratio=1/9):
@@ -53,16 +68,20 @@ def calc_ci(diffs, k=10, n_test_n_train_ratio=1/9):
     return mean_d - margin, mean_d + margin
 
 def sig_symbol(p_adj):
+    """Non-inferiority significance symbol."""
     if p_adj < 0.01:
-        return "**"
+        return "NI**"
     elif p_adj < 0.05:
-        return "*"
+        return "NI*"
     else:
         return "-"
 
-df_results = pd.read_csv('/data/bernardolemos/results/jina-v5/classificacao/results/results_from_outputs.csv')
-df_times = pd.read_csv('/data/bernardolemos/results/jina-v5/classificacao/results/times_from_outputs.csv')
-df_sel = pd.read_csv('/data/bernardolemos/results/jina-v5/instance_selection/selection_summary.csv')
+from pathlib import Path
+
+RESULTS_BASE = Path(os.environ.get("RESULTS_DIR", Path(__file__).resolve().parent.parent / "results" / "jina-v5"))
+df_results = pd.read_csv(RESULTS_BASE / "classificacao" / "results" / "results_from_outputs.csv")
+df_times = pd.read_csv(RESULTS_BASE / "classificacao" / "results" / "times_from_outputs.csv")
+df_sel = pd.read_csv(RESULTS_BASE / "instance_selection" / "selection_summary.csv")
 
 datasets = df_results['dataset'].unique()
 # Wait, exclude 'wos5736' or something? The user says 18 datasets.
@@ -81,7 +100,7 @@ for ds in datasets:
     no_is_f1 = df_results[(df_results['dataset'] == ds) & (df_results['method'] == 'no-is')].iloc[0][[f'mac{i}' for i in range(10)]].values.astype(float)
     esai_f1 = df_results[(df_results['dataset'] == ds) & (df_results['method'] == 'entropy-sublinear-ae-is')].iloc[0][[f'mac{i}' for i in range(10)]].values.astype(float)
     
-    t_stat, p_raw = nadeau_bengio_t_test(esai_f1 - no_is_f1)
+    t_stat, p_raw = nadeau_bengio_ni_test(esai_f1 - no_is_f1)
     raw_ps1.append(p_raw)
     
     mean_no = np.mean(no_is_f1)
@@ -128,7 +147,7 @@ for ds in datasets:
     bio_f1 = df_results[(df_results['dataset'] == ds) & (df_results['method'] == 'biois')].iloc[0][[f'mac{i}' for i in range(10)]].values.astype(float)
     esai_f1 = df_results[(df_results['dataset'] == ds) & (df_results['method'] == 'entropy-sublinear-ae-is')].iloc[0][[f'mac{i}' for i in range(10)]].values.astype(float)
     
-    t_stat, p_raw = nadeau_bengio_t_test(esai_f1 - bio_f1)
+    t_stat, p_raw = nadeau_bengio_ni_test(esai_f1 - bio_f1)
     raw_ps2.append(p_raw)
     
     mean_bio = np.mean(bio_f1)
@@ -190,18 +209,18 @@ table3 = sorted(table3, key=lambda x: x['avg_rank'])
 with open('tables.tex', 'w') as f:
     f.write("% TABLE 1\\n")
     f.write("\\begin{table*}[t]\\n\\centering\\n")
-    f.write("\\caption{ESAE-IS vs. No-IS.}\\n")
+    f.write("\\caption{Non-Inferiority of ESAE-IS vs. No-IS ($\\delta=0.02$, one-tailed Nadeau \\& Bengio corrected t-test, Holm-Bonferroni adjusted).}\\n")
     f.write("\\begin{tabular}{l c c c c c c}\\n\\hline\\n")
-    f.write("Dataset & No-IS F1 & ESAE-IS F1 & Delta & $p$-value & Time Save (\\%) & Red (\\%) \\\\\\n\\hline\\n")
+    f.write("Dataset & No-IS F1 & ESAE-IS F1 & $\\Delta$ F1 & $p$-adj (NI) & Time Save (\\%) & Red (\\%) \\\\\\n\\hline\\n")
     for r in rows1:
         f.write(f"{r['ds']} & {r['no_f1']:.4f} & {r['es_f1']:.4f} & {r['delta']:+.4f} & {r['p_adj']:.3f} ({sig_symbol(r['p_adj'])}) & {r['time_save']:.1f} & {r['red']:.1f} \\\\\\n")
     f.write("\\hline\\n\\end{tabular}\\n\\end{table*}\\n\\n")
 
     f.write("% TABLE 2\\n")
     f.write("\\begin{table*}[t]\\n\\centering\\n")
-    f.write("\\caption{ESAE-IS vs. BIOIS.}\\n")
+    f.write("\\caption{Non-Inferiority of ESAE-IS vs. BIOIS ($\\delta=0.02$, one-tailed Nadeau \\& Bengio corrected t-test, Holm-Bonferroni adjusted).}\\n")
     f.write("\\begin{tabular}{l c c c c c c c}\\n\\hline\\n")
-    f.write("Dataset & BIOIS F1 & BIOIS Red (\\%) & ESAE-IS F1 & ESAE Red (\\%) & Delta & 95\\% CI & $p$-value \\\\\\n\\hline\\n")
+    f.write("Dataset & BIOIS F1 & BIOIS Red (\\%) & ESAE-IS F1 & ESAE Red (\\%) & $\\Delta$ F1 & 95\\% CI & $p$-adj (NI) \\\\\\n\\hline\\n")
     for r in rows2:
         f.write(f"{r['ds']} & {r['bio_f1']:.4f} & {r['bio_red']:.1f} & {r['es_f1']:.4f} & {r['es_red']:.1f} & {r['delta']:+.4f} & [{r['ci_low']:+.4f}, {r['ci_high']:+.4f}] & {r['p_adj']:.3f} ({sig_symbol(r['p_adj'])}) \\\\\\n")
     f.write("\\hline\\n\\end{tabular}\\n\\end{table*}\\n\\n")

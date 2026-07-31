@@ -1,7 +1,8 @@
-cd $WORKDIR
+WORKDIR="${WORKDIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd .. && pwd)}"
+cd "$WORKDIR"
 
-datain="/data/bernardolemos/datasets"
-out="${RESULTS_DIR}/instance_selection"
+datain="${DATASETS_DIR:-$WORKDIR/../datasets}"
+out="${RESULTS_DIR:-$WORKDIR/../results}/instance_selection"
 
 mkdir -p $out
 mkdir -p "resources/logs"

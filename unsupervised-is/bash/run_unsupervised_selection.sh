@@ -46,8 +46,8 @@ done
 IFS=',' read -ra methods  <<< "$METHODS_ARG"
 IFS=',' read -ra datasets <<< "$DATASETS_ARG"
 
-datain="/data/bernardolemos/datasets"
-out="${RESULTS_DIR}/instance_selection"
+datain="${DATASETS_DIR:-$WORKDIR/../datasets}"
+out="${RESULTS_DIR:-$WORKDIR/../results}/instance_selection"
 
 mkdir -p "$out"
 mkdir -p "$out/logs"

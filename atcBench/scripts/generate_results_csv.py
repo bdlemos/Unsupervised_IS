@@ -84,7 +84,9 @@ def load_selection_csv(path: Path) -> dict:
 def main():
     p = argparse.ArgumentParser(description="Generate CSV of fold macros from outputs")
     p.add_argument("--pattern", default=None, help="glob pattern to find measures (default: resources/output/*/**/measures.fold_*.json)")
-    p.add_argument("--selection-csv", default=os.environ.get("RESULTS_DIR", "/app/results") + "/instance_selection/selection_summary.csv", help="CSV with selection reduction values to include (optional)")
+    default_results_dir = os.environ.get("RESULTS_DIR", str(Path(__file__).resolve().parent.parent.parent / "results"))
+    p.add_argument("--selection-csv", default=os.path.join(default_results_dir, "instance_selection", "selection_summary.csv"), help="CSV with selection reduction values to include (optional)")
+    p.add_argument("--model", default=None, help="filter results to a specific model subdirectory (e.g. modernbert, roberta)")
     p.add_argument("-o", "--output", default="results_from_outputs.csv", help="output CSV path")
     args = p.parse_args()
     pattern = args.pattern if args.pattern else PATTERN_DEFAULT
@@ -111,6 +113,10 @@ def main():
         rel = os.path.relpath(os.path.dirname(path), base_dir)
         parts = rel.split(os.sep) if rel != "." else [os.path.basename(os.path.dirname(path))]
         model = parts[0] if parts else ""
+
+        # skip if --model filter is set and this path belongs to a different model
+        if args.model and model != args.model:
+            continue
         top = find_top_dir(parts)
 
         if "_" in top:

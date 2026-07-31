@@ -13,7 +13,7 @@ from tqdm import tqdm
 
 import torch
 
-DATASETS_BASE = Path("/data/bernardolemos/datasets")
+DATASETS_BASE = Path(os.environ.get("DATASETS_DIR", Path(__file__).resolve().parent.parent / "datasets"))
 MODEL_ID = "jinaai/jina-embeddings-v5-text-small"
 REPR_DIR = "jina-v5"
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")

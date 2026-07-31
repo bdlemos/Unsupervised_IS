@@ -51,6 +51,10 @@ echo "Datasets : ${datasets[*]}"
 # Prefer project virtualenv python when available.
 if [[ -x "$ROOT_DIR/venv/bin/python" ]]; then
   PYTHON_BIN="$ROOT_DIR/venv/bin/python"
+elif [[ -n "${VENV_PATH:-}" && -x "$VENV_PATH/bin/python" ]]; then
+  PYTHON_BIN="$VENV_PATH/bin/python"
+elif command -v python3 >/dev/null 2>&1; then
+  PYTHON_BIN="python3"
 else
   PYTHON_BIN="python"
 fi
@@ -74,7 +78,7 @@ done
 printf "%s\n" "${combos[@]}" | xargs -n 1 -P "$NUM_PROCESSES" -I {} bash -c '
   IFS="|" read -r dataset method <<< "{}"
   combo="${dataset}_${method}"
-  log_dir="${RESULTS_DIR:-/data/bernardolemos/results}/classificacao/logs_modernbert/${dataset}"
+  log_dir="${RESULTS_DIR:-$ROOT_DIR/../results}/classificacao/logs_modernbert/${dataset}"
   mkdir -p "$log_dir"
   log_file="$log_dir/${method}.log"
   

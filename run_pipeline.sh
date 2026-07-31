@@ -10,13 +10,14 @@
 # Exit immediately if a command exits with a non-zero status
 set -e
 
-ROOT_DIR="/home/bernardo/projects"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VENV_PATH="${VENV_PATH:-$ROOT_DIR/venv}"
 
 # ── Default values ────────────────────────────────────────────────────────────
 DEFAULT_METHODS="no-is,biois,perplexity-is,autoencoder-is,gmm-is,adaptive-perplexity,adaptive-v2-perplexity"
 
 # Discover datasets automatically and sort them by the size of their texts.txt
-export DATASETS_DIR="/data/bernardolemos/datasets"
+export DATASETS_DIR="${DATASETS_DIR:-$ROOT_DIR/datasets}"
 
 
 if [[ -d "$DATASETS_DIR" ]]; then
@@ -42,6 +43,7 @@ METHODS="$DEFAULT_METHODS"
 DATASETS="$DEFAULT_DATASETS"
 STEPS=""
 INPUT_REP="tfidf"
+MODEL="modernbert"
 
 # ── Step selector helper ──────────────────────────────────────────────────────
 run_step() {
@@ -77,15 +79,19 @@ while [[ $# -gt 0 ]]; do
             STEPS="$2"
             shift 2
             ;;
+        --model)
+            MODEL="$2"
+            shift 2
+            ;;
         *)
             echo "Unknown argument: $1"
-            echo "Usage: $0 [--methods <m1,m2,...>] [--datasets <d1,d2,...>] [--steps <s1,s2,...>]"
+            echo "Usage: $0 [--methods <m1,m2,...>] [--datasets <d1,d2,...>] [--steps <s1,s2,...>] [--model <model_name>]"
             exit 1
             ;;
     esac
 done
 
-export RESULTS_DIR="/data/bernardolemos/results/$INPUT_REP"
+export RESULTS_DIR="${RESULTS_DIR:-$ROOT_DIR/results/$INPUT_REP}"
 
 echo "Methods  : $METHODS"
 echo "Datasets : $DATASETS"
@@ -95,15 +101,27 @@ else
     echo "Steps    : All (1, 2, 3, 4, 5)"
 fi
 
+activate_venv() {
+    if [[ -f "$VENV_PATH/bin/activate" ]]; then
+        source "$VENV_PATH/bin/activate"
+    fi
+}
+
+deactivate_venv() {
+    if type deactivate >/dev/null 2>&1; then
+        deactivate
+    fi
+}
+
 # ── Step 1 ────────────────────────────────────────────────────────────────────
 if run_step 1 selection; then
     echo "================================================="
     echo "Step 1: Running unsupervised selection"
     echo "================================================="
     cd "$ROOT_DIR/unsupervised-is"
-    source "$ROOT_DIR/venv/bin/activate"
+    activate_venv
     bash bash/run_unsupervised_selection.sh --methods "$METHODS" --datasets "$DATASETS" --inputrep "$INPUT_REP"
-    deactivate
+    deactivate_venv
 fi
 
 # ── Step 2 ────────────────────────────────────────────────────────────────────
@@ -112,9 +130,9 @@ if run_step 2 summary; then
     echo "Step 2: Generating summary (read_selection_ci.py)"
     echo "================================================="
     cd "$ROOT_DIR/unsupervised-is"
-    source "$ROOT_DIR/venv/bin/activate"
+    activate_venv
     python scripts/read_selection_ci.py
-    deactivate
+    deactivate_venv
 fi
 
 # ── Step 3 ────────────────────────────────────────────────────────────────────
@@ -123,9 +141,9 @@ if run_step 3 benchmark; then
     echo "Step 3: Running atcBench"
     echo "================================================="
     cd "$ROOT_DIR/atcBench"
-    source "$ROOT_DIR/venv/bin/activate"
+    activate_venv
     bash run.sh --num-processes 1 --methods "$METHODS" --datasets "$DATASETS"
-    deactivate
+    deactivate_venv
 fi
 
 # ── Step 4 ────────────────────────────────────────────────────────────────────
@@ -134,10 +152,16 @@ if run_step 4 metrics; then
     echo "Step 4: Generating results CSV (Metrics)"
     echo "================================================="
     cd "$ROOT_DIR/atcBench"
-    source "$ROOT_DIR/venv/bin/activate"
+    activate_venv
     mkdir -p "$RESULTS_DIR/classificacao/results"
-    python scripts/generate_results_csv.py --pattern "$RESULTS_DIR/classificacao/output/*/**/measures.fold_*.json" -o "$RESULTS_DIR/classificacao/results/results_modernbert.csv"
-    deactivate
+    MODEL_ARGS=""
+    OUTPUT_SUFFIX="all"
+    if [[ -n "$MODEL" ]]; then
+        MODEL_ARGS="--model $MODEL"
+        OUTPUT_SUFFIX="$MODEL"
+    fi
+    python scripts/generate_results_csv.py --pattern "$RESULTS_DIR/classificacao/output/*/**/measures.fold_*.json" $MODEL_ARGS -o "$RESULTS_DIR/classificacao/results/results_${OUTPUT_SUFFIX}.csv"
+    deactivate_venv
 fi
 
 # ── Step 5 ────────────────────────────────────────────────────────────────────
@@ -146,10 +170,16 @@ if run_step 5 times; then
     echo "Step 5: Generating results CSV (Times)"
     echo "================================================="
     cd "$ROOT_DIR/atcBench"
-    source "$ROOT_DIR/venv/bin/activate"
+    activate_venv
     mkdir -p "$RESULTS_DIR/classificacao/results"
-    python scripts/generate_times_csv.py --pattern "$RESULTS_DIR/classificacao/output/*/**/measures.fold_*.json" -o "$RESULTS_DIR/classificacao/results/times_modernbert.csv"
-    deactivate
+    MODEL_ARGS=""
+    OUTPUT_SUFFIX="all"
+    if [[ -n "$MODEL" ]]; then
+        MODEL_ARGS="--model $MODEL"
+        OUTPUT_SUFFIX="$MODEL"
+    fi
+    python scripts/generate_times_csv.py --pattern "$RESULTS_DIR/classificacao/output/*/**/measures.fold_*.json" $MODEL_ARGS -o "$RESULTS_DIR/classificacao/results/times_${OUTPUT_SUFFIX}.csv"
+    deactivate_venv
 fi
 
 echo -e "\n================================================="
