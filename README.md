@@ -47,7 +47,7 @@ docker run -d --rm \
   -v $(pwd)/results:/app/results \
   --name pipeline-run \
   unsupervised-is \
-  bash -c 'bash run_pipeline.sh --methods "adaptive-cluster-is" --datasets "trec,ohsumed" --inputrep "jina-v5" 2>&1 | tee /app/host/pipeline_geral.log'
+  bash -c 'bash run_pipeline.sh --methods "adaptive-cluster-is" --datasets "agnews,yelp_2013,medline" --inputrep "jina-v5" 2>&1 | tee /app/host/pipeline_geral.log'
 
 # Acompanhe os logs em tempo real na máquina local:
 tail -f pipeline_geral.log
