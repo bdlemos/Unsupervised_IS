@@ -124,6 +124,33 @@ if run_step 1 selection; then
     deactivate_venv
 fi
 
+# ── Filtra métodos que falharam completamente no Step 1 ────────────────────
+FAILED_METHODS_FILE="${RESULTS_DIR}/instance_selection/logs/failed_methods.txt"
+
+if [[ -f "$FAILED_METHODS_FILE" && -s "$FAILED_METHODS_FILE" ]]; then
+    echo ""
+    echo "================================================="
+    echo "Removendo métodos que falharam no Step 1:"
+    cat "$FAILED_METHODS_FILE"
+    echo "================================================="
+
+    # Reconstrói $METHODS excluindo os que estão no arquivo de falhas
+    IFS=',' read -ra all_methods <<< "$METHODS"
+    filtered_methods=()
+    while IFS= read -r failed_method; do
+        [[ -z "$failed_method" ]] && continue
+        for i in "${!all_methods[@]}"; do
+            if [[ "${all_methods[$i]}" == "$failed_method" ]]; then
+                unset 'all_methods[i]'
+            fi
+        done
+    done < "$FAILED_METHODS_FILE"
+
+    # Reconstrói a string separada por vírgula
+    METHODS="$(IFS=,; echo "${all_methods[*]}")"
+    echo "Methods (atualizado) : $METHODS"
+fi
+
 # ── Step 2 ────────────────────────────────────────────────────────────────────
 if run_step 2 summary; then
     echo -e "\n================================================="
