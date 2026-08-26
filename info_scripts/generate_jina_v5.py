@@ -31,16 +31,30 @@ def load_split(split_csv: Path) -> list[tuple[list[int], list[int]]]:
     splits = []
     with open(split_csv, encoding="utf-8", errors="ignore") as f:
         for line in f:
-            train_part, test_part = line.strip().split(";")
-            train_idx = list(map(int, train_part.split()))
-            test_idx = list(map(int, test_part.split()))
+            parts = line.strip().split(";")
+            train_idx = list(map(int, parts[0].split()))
+            # junta val+test se vier 3 campos (train;val;test)
+            test_idx = list(map(int, " ".join(parts[1:]).split()))
             splits.append((train_idx, test_idx))
     return splits
 
 
 def encode_texts(model, texts: list[str]) -> np.ndarray:
     all_embeddings = []
-    for start in tqdm(range(0, len(texts), BATCH_SIZE),desc="Encoding texts"):
+    t_start = time.time()
+    total = len(texts)
+    for start in range(0, total, BATCH_SIZE):
+        if start % 5000 == 0:
+            elapsed = time.time() - t_start
+            if start > 0:
+                rate = elapsed / start  # segundos por texto
+                remaining = rate * (total - start)
+                eta_str = time.strftime("%H:%M:%S", time.gmtime(remaining))
+                elapsed_str = time.strftime("%H:%M:%S", time.gmtime(elapsed))
+                print(f"  [{start}/{total}] encoding texts... "
+                      f"elapsed={elapsed_str} ETA={eta_str}")
+            else:
+                print(f"  [{start}/{total}] encoding texts...")
         batch = texts[start : start + BATCH_SIZE]
         with torch.no_grad():
             emb = model.encode(
@@ -125,6 +139,7 @@ def main():
 
     print(f"Loading model {MODEL_ID} ...")
     model = load_model()
+    print(f"Model loaded on {DEVICE}.")
 
     for ds_name in datasets:
         ds_path = DATASETS_BASE / ds_name
