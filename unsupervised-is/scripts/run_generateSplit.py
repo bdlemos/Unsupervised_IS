@@ -13,6 +13,7 @@ from collections import Counter
 from src.main.python.iSel import perplexity_is, biois, autoencoder_is, iforest_is, gmm_is, cluster_is
 from src.main.python.iSel import random_is, no_is, adaptive_is, adaptive_v2_is, adaptive_cluster_is, sublinear_ae_is
 from src.main.python.iSel import entropy_sublinear_ae_is
+from src.main.python.iSel import e2sc, cnn, lssm, lsbo
 
 import socket
 
@@ -35,7 +36,7 @@ def get_selector(method: str):
 
     #unsupervised
     if method == 'perplexity-is': return perplexity_is.PerplexityIS(n_topics=10, low_percentile=low_percentile, high_percentile=high_percentile, beta=beta, theta=theta)
- 
+
     if method == 'autoencoder-is': return autoencoder_is.AutoencoderIS(
                                                                         n_epochs=20, batch_size=64, bottleneck_ratio=0.05,
                                                                         beta=0.50, theta=0.1666666, low_percentile=40, high_percentile=70
@@ -70,6 +71,31 @@ def get_selector(method: str):
         ae_epochs=50,          # autoencoder epochs
         random_state=13
     )
+
+    # E2SC — Effective, Efficient, and Scalable Confidence-Based IS
+    if method == 'e2sc': return e2sc.E2SC(
+                                            alphaMode="exact",
+                                            betaMode="iterative",
+                                            beta=0.0,
+                                            maxreduction=1.0,
+                                            delta=0.05,
+                                            n_neighbors=0
+                                        )
+
+    if method == 'e2sc-is': return e2sc.E2SC(
+                                            alphaMode="approximated",
+                                            betaMode="heuristic",
+                                            n_neighbors=10
+                                        )
+
+    # CNN — Condensed Nearest Neighbor
+    if method == 'cnn-is': return cnn.CNN(n_neighbors=1)
+
+    # LSSm — Local Set-based Smoother
+    if method == 'lssm-is': return lssm.LSSm(n_neighbors=1)
+
+    # LSBo — Local Set Border Selector
+    if method == 'lsbo-is': return lsbo.LSBo()
     return None
 
 
@@ -105,6 +131,20 @@ def main():
 
     args, info = arguments()
     logger.info(str(args))
+
+    # ── Verifica se o split já foi gerado para esse dataset/método ─────────
+    filename = f"{args.outputdir}/split_{args.folds}_{args.method}_idxinfold.pkl"
+    translated_filename = filename.replace("_idxinfold", "")
+
+    already_exists = os.path.isfile(filename) and os.path.isfile(translated_filename)
+
+    if already_exists and not args.overwrite:
+        logger.info(f"SKIP: split já existe em '{filename}' e overwrite=False. Pulando execução.")
+        print(f"SKIP: {args.dataset} / {args.method} já processado. Use --overwrite para forçar.")
+        exit(0)
+
+    if already_exists and args.overwrite:
+        logger.info(f"OVERWRITE: split já existe em '{filename}', mas overwrite=True. Reprocessando.")
 
     print(f"{args.splitdir}/split_{args.folds}.pkl")
     splits_df = get_splits(f"{args.splitdir}/split_{args.folds}.pkl")
@@ -145,11 +185,9 @@ def main():
 
     splits_to_save_df = pd.DataFrame(data=splits_to_save)
 
-    filename = f"{args.outputdir}/split_{args.folds}_{args.method}_idxinfold.pkl"
-
     checkpoint_splits(
         splits_df=splits_to_save_df,
-        filename = filename
+        filename=filename
     )
 
     splits_to_save_df_traslated = translate_train_idxinfold(
@@ -157,7 +195,7 @@ def main():
 
     checkpoint_splits(
         splits_df=splits_to_save_df_traslated,
-        filename=filename.replace("_idxinfold", "")
+        filename=translated_filename
     )
 
     if args.save:

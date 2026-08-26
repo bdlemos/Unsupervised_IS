@@ -31,7 +31,7 @@ def arguments():
     parser.add_argument("--inputrep", type=str, default="tfidf")
     parser.add_argument("--out", required=True)
     parser.add_argument("--datain", required=True)
-    parser.add_argument("--overwrite", default=1)
+    parser.add_argument("--overwrite", default=0)
 
     args = parser.parse_args()
 
