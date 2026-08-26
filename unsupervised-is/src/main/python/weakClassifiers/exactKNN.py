@@ -1,9 +1,8 @@
-
 from sklearn.base import BaseEstimator
 from sklearn.model_selection import GridSearchCV
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.calibration import CalibratedClassifierCV
-from sklearn.datasets import dump_svmlight_file
+from sklearn.frozen import FrozenEstimator
 from sklearn.metrics import f1_score
 
 import warnings
@@ -29,7 +28,7 @@ default_tuning_params = {
 
 class KNNTraditionalClassifier(BaseEstimator):
 
-    def __init__(self, n_neighbors: int = 0, 
+    def __init__(self, n_neighbors: int = 0,
                         cv: int = 0,
                         n_jobs: int = -1,
                         metric: str = "minkowski"):
@@ -37,15 +36,15 @@ class KNNTraditionalClassifier(BaseEstimator):
         self.n_neighbors = n_neighbors
         self.cv = cv
         self.n_jobs = n_jobs
-        self.metric = metric 
-        
+        self.metric = metric
+
         self.estimator = base_estimators['knn']
         self.params = default_params['knn'].copy()
-        
+
 
         if self.n_neighbors:
             self.params['n_neighbors'] = self.n_neighbors
-        
+
         if self.metric:
             self.params['metric'] = self.metric
 
@@ -67,7 +66,7 @@ class KNNTraditionalClassifier(BaseEstimator):
             default_tuning_params['knn'][0]['n_neighbors'] = sorted(
                 list(set(map(int, np.linspace(1, 0.75*X.shape[0], 5)))))
             print(X.shape)
-            
+
 
         #Possibilitando executar o cv para datasets ext pequenos
         #counter = Counter(y)
@@ -113,7 +112,7 @@ class KNNTraditionalClassifier(BaseEstimator):
 
         t_init = time.time()
         # calibrator pro predict proba
-        self.calibrator = CalibratedClassifierCV(self.estimator, cv='prefit')
+        self.calibrator = CalibratedClassifierCV(FrozenEstimator(self.estimator))
         self.calibrator.fit(X, y)
         #print(f"{time.time() - t_init} seconds to calibrate")
 
@@ -136,7 +135,7 @@ class KNNTraditionalClassifier(BaseEstimator):
         # else:
         #return self.estimator.predict_proba(X)
         t_init = time.time()
-        result = self.calibrator.predict_proba(X) 
+        result = self.calibrator.predict_proba(X)
         #print(f"{time.time() - t_init} seconds to predict")
         return result
 
@@ -169,7 +168,7 @@ def generateExactKNN(X, y, cvSplit, doGridSearch, n_neighbors):
         #for train_index, test_index in skf.split(X, y):
         for train_index, test_index in cvSplit:
 
-            #X_train = 
+            #X_train =
 
             classifier = KNNTraditionalClassifier(n_neighbors=n_neighbors)
             classifier.fit(X[train_index], y[train_index])

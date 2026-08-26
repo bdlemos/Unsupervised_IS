@@ -78,7 +78,7 @@ class NMSlibKNNClassifier(BaseEstimator, ClassifierMixin):
             else:
                 ids.pop()
             nearest_neighboor[xidx] = ids
-        
+
         modeResults = mode(self.y_[nearest_neighboor], axis=1)
         y_pred = modeResults.mode.ravel()
 
