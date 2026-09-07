@@ -6,7 +6,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Ferramentas de sistema necessárias
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        curl git bash python3-venv \
+    curl git bash python3-venv \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 ENV PYTHONUNBUFFERED=1
@@ -31,6 +31,9 @@ COPY atcBench/ ./atcBench/
 # ─── Pipeline principal ───────────────────────────────────────────────────────
 # Ajusta ROOT_DIR do script para /app (de /home/bernardo/projects)
 COPY run_pipeline.sh ./run_pipeline.sh
+COPY run_sensitivity.sh ./run_sensitivity.sh
+COPY run_fixed_rates.sh ./run_fixed_rates.sh
+
 RUN sed -i 's|ROOT_DIR=.*|ROOT_DIR="/app"|' run_pipeline.sh \
     && chmod +x run_pipeline.sh
 

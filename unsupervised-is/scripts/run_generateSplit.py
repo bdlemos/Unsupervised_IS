@@ -13,6 +13,7 @@ from collections import Counter
 from src.main.python.iSel import perplexity_is, biois, autoencoder_is, iforest_is, gmm_is, cluster_is
 from src.main.python.iSel import random_is, no_is, adaptive_is, adaptive_v2_is, adaptive_cluster_is, sublinear_ae_is
 from src.main.python.iSel import entropy_sublinear_ae_is
+from src.main.python.iSel import ablation_methods
 from src.main.python.iSel import e2sc, cnn, lssm, lsbo
 
 import socket
@@ -96,6 +97,63 @@ def get_selector(method: str):
 
     # LSBo — Local Set Border Selector
     if method == 'lsbo-is': return lsbo.LSBo()
+
+    # ── Ablation variants (Exp 2 / Exp 6) ────────────────────────────────
+    if method == 'ablation-random-esae-rate' or method == 'random-matched-esae':
+        return ablation_methods.AblationRandomESAERate()
+
+    if method == 'ablation-cluster-uniform':
+        return ablation_methods.AblationClusterUniform()
+
+    if method == 'ablation-cluster-sublinear-random':
+        return ablation_methods.AblationClusterSublinearRandom()
+
+    # ── SAE-IS at fixed rates (Exp 4) ────────────────────────────────────
+    # Method names: sae-rate-10, sae-rate-15, ..., sae-rate-40
+    if method.startswith('sae-rate-'):
+        rate_pct = int(method.split('-')[-1])
+        rate = rate_pct / 100.0
+        return sublinear_ae_is.SublinearAEIS(
+            target_reduction=rate,
+            n_clusters=200,
+            gamma=0.5,
+            ae_epochs=50,
+            random_state=13
+        )
+
+    # ── ESAE sensitivity variants (Exp 3) ────────────────────────────────
+    # Method names: esae-K50, esae-K100, esae-alpha5, esae-gamma03, esae-rmax03, etc.
+    if method.startswith('esae-'):
+        # Parse the parameter override from the method name
+        suffix = method[5:]  # strip 'esae-'
+        # Default ESAE params
+        params = dict(r_max=0.50, alpha=15.0, n_clusters=200, gamma=0.5,
+                      ae_epochs=50, random_state=13)
+
+        if suffix.startswith('K'):
+            val = suffix[1:]
+            if val == 'sqrtN':
+                params['n_clusters'] = -1  # sentinel: use sqrt(N) — this is the default in ESAE
+            else:
+                params['n_clusters'] = int(val)
+        elif suffix.startswith('alpha'):
+            params['alpha'] = float(suffix[5:])
+        elif suffix.startswith('gamma'):
+            # gamma03 -> 0.3, gamma05 -> 0.5, gamma07 -> 0.7
+            params['gamma'] = float(suffix[5:]) / 10.0 if len(suffix[5:]) <= 2 else float(suffix[5:])
+        elif suffix.startswith('rmax'):
+            # rmax03 -> 0.3, rmax04 -> 0.4, etc.
+            params['rmax_val'] = float(suffix[4:]) / 10.0 if len(suffix[4:]) <= 2 else float(suffix[4:])
+            params['r_max'] = params.pop('rmax_val')
+
+        # n_clusters=-1 means use sqrt(N), which is the ESAE default behavior
+        # We handle this by passing a very large n_clusters that will be
+        # overridden inside EntropySublinearAEIS (it uses sqrt(N) anyway)
+        if params['n_clusters'] == -1:
+            params['n_clusters'] = 99999  # will be clamped to sqrt(N) inside ESAE
+
+        return entropy_sublinear_ae_is.EntropySublinearAEIS(**params)
+
     return None
 
 

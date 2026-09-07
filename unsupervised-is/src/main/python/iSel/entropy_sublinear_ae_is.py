@@ -143,8 +143,12 @@ class EntropySublinearAEIS(InstanceSelectionMixin):
         # ------------------------------------------------------------------
         # Step 2: Micro-clustering (Tessellation)
         # ------------------------------------------------------------------
-        # n_clusters = max(2, min(self.n_clusters, n_samples // 10))
-        n_clusters = np.sqrt(n_samples).astype(int)  # Use sqrt(N) for micro-clusters
+        # If n_clusters is explicitly set to a reasonable value, use it;
+        # otherwise default to sqrt(N).
+        if self.n_clusters is not None and self.n_clusters < n_samples // 2 and self.n_clusters < 99999:
+            n_clusters = max(2, min(self.n_clusters, n_samples // 2))
+        else:
+            n_clusters = int(np.sqrt(n_samples))  # Use sqrt(N) for micro-clusters
         print(f"[EntropySublinearAEIS] Step 2 — Tessellating into {n_clusters} micro-clusters using {self.clustering_method}...")
 
         if self.clustering_method == 'minibatchkmeans':

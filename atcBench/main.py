@@ -12,6 +12,8 @@ KNOWN_METHODS = [
     "autoencoder-is", "perplexity-is", "random-is", "gmm-is", "biois", "random",
     "no-is", "entropy-sublinear-ae-is", "sublinear-ae-is",
     "e2sc-is", "cnn-is", "lssm-is", "lsbo-is",
+    "ablation-random-esae-rate", "ablation-cluster-uniform",
+    "ablation-cluster-sublinear-random", "random-matched-esae",
 ]
 
 
@@ -22,6 +24,8 @@ def rewrite_combo_data_override(argv):
     for arg in argv[1:]:
         if arg.startswith("data="):
             value = arg.split("=", 1)[1]
+            matched = False
+            # Check explicit known methods first
             for method in sorted(KNOWN_METHODS, key=len, reverse=True):
                 suffix = f"_{method}"
                 if value.endswith(suffix):
@@ -31,8 +35,32 @@ def rewrite_combo_data_override(argv):
                         f"data.dataset_name={dataset_name}",
                         f"data.is_method={method}",
                     ])
+                    matched = True
                     break
-            else:
+            
+            # Check dynamic methods (e.g., esae-K50, esae-alpha10, esae-gamma03, etc.)
+            if not matched and "_esae-" in value:
+                parts = value.rsplit("_esae-", 1)
+                dataset_name = parts[0]
+                method = "esae-" + parts[1]
+                rewritten.extend([
+                    "data=template",
+                    f"data.dataset_name={dataset_name}",
+                    f"data.is_method={method}",
+                ])
+                matched = True
+            elif not matched and "_sae-rate-" in value:
+                parts = value.rsplit("_sae-rate-", 1)
+                dataset_name = parts[0]
+                method = "sae-rate-" + parts[1]
+                rewritten.extend([
+                    "data=template",
+                    f"data.dataset_name={dataset_name}",
+                    f"data.is_method={method}",
+                ])
+                matched = True
+
+            if not matched:
                 rewritten.append(arg)
             continue
 
