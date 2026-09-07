@@ -11,7 +11,11 @@
 set -e
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-VENV_PATH="${VENV_PATH:-$ROOT_DIR/venv}"
+if [[ -d "/app/venv" ]]; then
+    VENV_PATH="/app/venv"
+else
+    VENV_PATH="${VENV_PATH:-$ROOT_DIR/venv}"
+fi
 
 # ── Default values ────────────────────────────────────────────────────────────
 DEFAULT_METHODS="no-is,biois,perplexity-is,autoencoder-is,gmm-is,adaptive-perplexity,adaptive-v2-perplexity"
