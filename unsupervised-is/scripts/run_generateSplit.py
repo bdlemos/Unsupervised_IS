@@ -57,7 +57,7 @@ def get_selector(method: str):
     # I think it can be my master piece
     if method == 'sublinear-ae-is': return sublinear_ae_is.SublinearAEIS(
         target_reduction=0.25, # target 25% reduction
-        n_clusters=200,        # many micro-clusters
+        n_clusters=-1,         # sqrt(N) micro-clusters
         gamma=0.5,             # square-root sublinear sampling
         ae_epochs=50,          # autoencoder epochs
         random_state=13
@@ -67,7 +67,7 @@ def get_selector(method: str):
     if method == 'entropy-sublinear-ae-is': return entropy_sublinear_ae_is.EntropySublinearAEIS(
         r_max=0.50,            # max reduction
         alpha=15.0,            # entropy sensitivity (high due to K-Means uniform distribution)
-        n_clusters=200,        # micro-clusters
+        n_clusters=-1,         # sqrt(N) micro-clusters
         gamma=0.5,             # square-root sublinear
         ae_epochs=50,          # autoencoder epochs
         random_state=13
@@ -108,6 +108,12 @@ def get_selector(method: str):
     if method == 'ablation-cluster-sublinear-random':
         return ablation_methods.AblationClusterSublinearRandom()
 
+    if method == 'ablation-ae-esae-rate':
+        return ablation_methods.AblationAEESAERate()
+
+    if method == 'ablation-cluster-uniform-ae':
+        return ablation_methods.AblationClusterUniformAE()
+
     # ── SAE-IS at fixed rates (Exp 4) ────────────────────────────────────
     # Method names: sae-rate-10, sae-rate-15, ..., sae-rate-40
     if method.startswith('sae-rate-'):
@@ -115,7 +121,7 @@ def get_selector(method: str):
         rate = rate_pct / 100.0
         return sublinear_ae_is.SublinearAEIS(
             target_reduction=rate,
-            n_clusters=200,
+            n_clusters=-1,
             gamma=0.5,
             ae_epochs=50,
             random_state=13
@@ -127,7 +133,7 @@ def get_selector(method: str):
         # Parse the parameter override from the method name
         suffix = method[5:]  # strip 'esae-'
         # Default ESAE params
-        params = dict(r_max=0.50, alpha=15.0, n_clusters=200, gamma=0.5,
+        params = dict(r_max=0.50, alpha=15.0, n_clusters=-1, gamma=0.5,
                       ae_epochs=50, random_state=13)
 
         if suffix.startswith('K'):
@@ -260,7 +266,6 @@ def main():
         save_results(args, info)
 
     print("END")
-    exit()
 
 
 if __name__ == '__main__':
