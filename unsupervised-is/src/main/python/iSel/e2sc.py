@@ -210,6 +210,10 @@ class E2SC(InstanceSelectionMixin):
         n_training_samples = len(alpha)
         n_samples_to_remove = int(n_training_samples * beta)
         
+        # Cap the number of samples to remove by the number of correctly predicted instances
+        # (which are the only ones with non-zero probability in alpha)
+        n_samples_to_remove = min(n_samples_to_remove, np.sum(alpha > 0))
+        
         idx_choice_to_remove = np.random.choice(a=list(range(n_training_samples)),
                                                 size=n_samples_to_remove,
                                                 replace=False,
