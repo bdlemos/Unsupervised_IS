@@ -14,6 +14,7 @@ KNOWN_METHODS = [
     "e2sc-is", "cnn-is", "lssm-is", "lsbo-is",
     "ablation-random-esae-rate", "ablation-cluster-uniform",
     "ablation-cluster-sublinear-random", "random-matched-esae",
+    "ablation-ae-esae-rate", "ablation-cluster-uniform-ae",
 ]
 
 

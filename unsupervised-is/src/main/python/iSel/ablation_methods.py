@@ -294,3 +294,198 @@ class AblationClusterSublinearRandom(InstanceSelectionMixin):
               f"(reduction = {self.reduction_:.2%})")
 
         return self.X_, self.y_
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 4. AE ranking @ ESAE adaptive rate, NO clustering (A=1, B=0, C=—)
+# ══════════════════════════════════════════════════════════════════════════════
+
+class AblationAEESAERate(InstanceSelectionMixin):
+    """AE-guided removal at the ESAE entropy-adaptive rate, without clustering.
+
+    Computes the adaptive reduction via clustering + entropy (exactly as all
+    other ablation variants), trains the autoencoder for reconstruction error
+    scores, then removes instances from the **global pool** using probabilistic
+    AE-guided removal (p_remove ∝ 1/(score+ε), same as ESAE).
+
+    No spatial partitioning is used for the removal step — this isolates the
+    AE contribution without any tessellation geometry.
+    """
+
+    def __init__(
+        self,
+        r_max: float = 0.50,
+        alpha: float = 15.0,
+        gamma: float = 0.5,
+        ae_epochs: int = 50,
+        random_state: int = 13,
+    ) -> None:
+        self.r_max = r_max
+        self.alpha = alpha
+        self.gamma = gamma
+        self.ae_epochs = ae_epochs
+        self.random_state = random_state
+        self.sample_indices_ = []
+
+    def select_data(self, X, y):
+        X = _to_dense(X)
+        X, y = check_X_y(X, y, accept_sparse=False)
+        n_samples = len(y)
+
+        # ── Step 1: Compute adaptive rate (same as all ablation variants) ──
+        print(f"[AblationAEESAERate] Computing adaptive rate...")
+        target_reduction, _, _ = _compute_esae_adaptive_rate(
+            X, self.r_max, self.alpha, self.random_state
+        )
+
+        # ── Step 2: Train autoencoder for reconstruction error scores ──────
+        print(f"[AblationAEESAERate] Training Autoencoder for {self.ae_epochs} epochs...")
+        ae = AutoencoderIS(
+            n_epochs=self.ae_epochs,
+            low_percentile=0.0,
+            high_percentile=100.0,
+            beta=0.0,
+            theta=0.0,
+            random_state=self.random_state,
+        )
+        ae.fit(X, y)
+        scores = ae.reconstruction_errors_
+
+        print(f"[AblationAEESAERate] AE scores: min={scores.min():.4f}, "
+              f"median={np.median(scores):.4f}, max={scores.max():.4f}")
+
+        # ── Step 3: Probabilistic AE-guided removal from global pool ───────
+        remove_count = int(n_samples * target_reduction)
+
+        if remove_count > 0:
+            # Same weighting as ESAE: low error → high removal probability
+            inv_scores = 1.0 / (scores + 1e-8)
+            p_remove = inv_scores / np.sum(inv_scores)
+
+            rng = np.random.RandomState(self.random_state)
+            to_remove = rng.choice(
+                n_samples, size=remove_count, replace=False, p=p_remove
+            )
+            mask = np.ones(n_samples, dtype=bool)
+            mask[to_remove] = False
+        else:
+            mask = np.ones(n_samples, dtype=bool)
+
+        self.X_ = np.asarray(X[mask])
+        self.y_ = np.asarray(y[mask])
+        self.sample_indices_ = np.where(mask)[0]
+        self.reduction_ = 1.0 - float(len(self.y_)) / n_samples
+        self.target_reduction = target_reduction
+
+        # Compatibility attributes
+        self.beta = self.target_reduction
+        self.theta = 0.0
+        self.low_percentile = 0.0
+        self.high_percentile = 100.0
+
+        print(f"[AblationAEESAERate] Done — kept {len(self.y_)} / {n_samples} "
+              f"(reduction = {self.reduction_:.2%})")
+
+        return self.X_, self.y_
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 5. Clustering + Uniform (linear) removal + AE ranking (A=1, B=1, C=0)
+# ══════════════════════════════════════════════════════════════════════════════
+
+class AblationClusterUniformAE(InstanceSelectionMixin):
+    """Tessellation with linear proportional removal, AE-guided within clusters.
+
+    Same structure as AblationClusterUniform (linear proportional removal per
+    cluster, no sublinear cap), but within each cluster instances are removed
+    using probabilistic AE-guided selection (p_remove ∝ 1/(score+ε), same as
+    ESAE) instead of uniform random.
+
+    This isolates the sublinear cap contribution: comparing this cell against
+    the full ESAE shows what the sublinear geometry adds on top of
+    AE+clustering.
+    """
+
+    def __init__(
+        self,
+        r_max: float = 0.50,
+        alpha: float = 15.0,
+        ae_epochs: int = 50,
+        random_state: int = 13,
+    ) -> None:
+        self.r_max = r_max
+        self.alpha = alpha
+        self.ae_epochs = ae_epochs
+        self.random_state = random_state
+        self.sample_indices_ = []
+
+    def select_data(self, X, y):
+        X = _to_dense(X)
+        X, y = check_X_y(X, y, accept_sparse=False)
+        n_samples = len(y)
+
+        # ── Step 1: Compute adaptive rate + clustering ─────────────────────
+        print(f"[AblationClusterUniformAE] Computing adaptive rate + clustering...")
+        target_reduction, labels, sizes = _compute_esae_adaptive_rate(
+            X, self.r_max, self.alpha, self.random_state
+        )
+
+        # ── Step 2: Train autoencoder for reconstruction error scores ──────
+        print(f"[AblationClusterUniformAE] Training Autoencoder for {self.ae_epochs} epochs...")
+        ae = AutoencoderIS(
+            n_epochs=self.ae_epochs,
+            low_percentile=0.0,
+            high_percentile=100.0,
+            beta=0.0,
+            theta=0.0,
+            random_state=self.random_state,
+        )
+        ae.fit(X, y)
+        scores = ae.reconstruction_errors_
+
+        print(f"[AblationClusterUniformAE] AE scores: min={scores.min():.4f}, "
+              f"median={np.median(scores):.4f}, max={scores.max():.4f}")
+
+        # ── Step 3: Linear proportional removal with AE guidance ───────────
+        n_clusters = len(sizes)
+        np.random.seed(self.random_state)
+        mask = np.ones(n_samples, dtype=bool)
+
+        for c in range(n_clusters):
+            cluster_idx = np.where(labels == c)[0]
+            s_c = len(cluster_idx)
+            if s_c == 0:
+                continue
+
+            remove_count = int(s_c * target_reduction)
+            if remove_count > 0:
+                # AE-guided removal within cluster (same as ESAE)
+                c_scores = scores[cluster_idx]
+                inv_scores = 1.0 / (c_scores + 1e-8)
+                p_remove = inv_scores / np.sum(inv_scores)
+
+                to_remove_local = np.random.choice(
+                    len(cluster_idx),
+                    size=remove_count,
+                    replace=False,
+                    p=p_remove
+                )
+                to_remove = cluster_idx[to_remove_local]
+                mask[to_remove] = False
+
+        self.X_ = np.asarray(X[mask])
+        self.y_ = np.asarray(y[mask])
+        self.sample_indices_ = np.where(mask)[0]
+        self.reduction_ = 1.0 - float(len(self.y_)) / n_samples
+        self.target_reduction = target_reduction
+
+        # Compatibility attributes
+        self.beta = self.target_reduction
+        self.theta = 0.0
+        self.low_percentile = 0.0
+        self.high_percentile = 100.0
+
+        print(f"[AblationClusterUniformAE] Done — kept {len(self.y_)} / {n_samples} "
+              f"(reduction = {self.reduction_:.2%})")
+
+        return self.X_, self.y_
