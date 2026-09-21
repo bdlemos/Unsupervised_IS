@@ -138,7 +138,11 @@ class SublinearAEIS(InstanceSelectionMixin):
         # ------------------------------------------------------------------
         # Step 2: Micro-clustering (Tessellation)
         # ------------------------------------------------------------------
-        n_clusters = max(2, min(self.n_clusters, n_samples // 10))
+        if self.n_clusters is not None and self.n_clusters > 0 and self.n_clusters < 99999:
+            n_clusters = max(2, min(self.n_clusters, n_samples // 10))
+        else:
+            n_clusters = int(np.sqrt(n_samples))
+            
         print(f"[SublinearAEIS] Step 2 — Tessellating space into {n_clusters} micro-clusters...")
         km = MiniBatchKMeans(n_clusters=n_clusters, random_state=self.random_state, n_init=3)
         labels = km.fit_predict(X)
