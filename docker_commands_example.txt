@@ -1,0 +1,26 @@
+
+
+docker run -d --rm --gpus '"device=1"' --cpus="16" --memory="32g" \
+  -v /data/bernardolemos:/app/host \
+  -v /data/bernardolemos/datasets:/data/bernardolemos/datasets \
+  -v /data/bernardolemos/results:/data/bernardolemos/results \
+  --name pipeline-run \
+  unsupervised-is \
+  bash -c 'bash run_pipeline.sh \
+    --steps "3,4,5" \
+    --methods "entropy-sublinear-ae-is,autoencoder-is,sublinear-ae-is,no-is,biois, " \
+    --datasets "mpqa,trec,sst2,twitter,vader_movie,movie_review,sst1,pang_movie,subj,yelp_reviews,wos5736,reuters90,webkb,wos11967,acm,ohsumed,20ng,dblp,books" \
+    --inputrep "jina-v5" \
+    2>&1 | tee /app/host/pipeline_modern_bert.log'
+
+source /data/bernardolemos/venv/bin/activate && RESULTS_DIR=/data/bernardolemos/results/jina-v5 python /data/bernardolemos/atcBench/scripts/generate_results_csv.py --pattern "/data/bernardolemos/results/jina-v5/classificacao/output/*/**/measures.fold_*.json" --model modernbert -o "results_modernbert.csv"
+
+
+docker run -d --rm   --gpus '"device=1"'   --cpus="16"   --memory="32g"   -v $(pwd):/app/host   -v $(pwd)/datasets:/app/datasets   -v $(pwd)/results:/app/results   --name pipeline-run   unsupervised-is   bash -c 'bash run_pipeline.sh --methods "entropy-sublinear-ae-is,autoencoder-is,sublinear-ae-is,no-is,biois" --datasets "agnews,yel^C2013,medline" --inputr
+ep "jina-v5" 2>&1 | tee /app/host/big_datasets.log'
+
+docker run -d --rm   --gpus '"device=1"'   --cpus="16"   --memory="32g"   -v $(pwd):/app/host   -v $(pwd)/datasets:/app/datasets   -v $(pwd)/results:/app/results   --name pipeline-run   unsupervised-is   bash -c 'bash run_pipeline.sh --methods "entropy-sublinear-ae-is,autoencoder-is,sublinear-ae-is,no-is,biois" --datasets "agnews,medline" --inputrep "jina-v5" 2>&1 | tee /app/host/big_datasets.log'
+
+DATASETS_DIR=/data/bernardolemos/datasets nohup python -u info_scripts/generate_jina_v5.py --datasets agnews yelp_2013 medline --folds 5 > jina_v5.log 2>&1 &
+
+docker run -d --rm   --gpus '"device=0"'   --cpus="16"   --memory="32g"   -v $(pwd):/app/host   -v $(pwd)/datasets:/app/datasets   -v $(pwd)/results:/app/results   --name pipeline-run-2   unsupervised-is   bash -c 'bash run_pipeline.sh --methods "entropy-sublinear-ae-is,e2sc-is,cnn-is,lssm-is, lsbo-is"  --datasets "mpqa,trec,sst2,twitter,vader_movie,movie_review,sst1,pang_movie,subj,yelp_reviews,wos5736,reuters90,webkb,wos11967,acm,ohsumed,20ng,dblp,books" --inputrep "jina-v5" 2>&1 | tee /app/host/small_baselines_datasets.log'
