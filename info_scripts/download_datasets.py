@@ -166,7 +166,7 @@ DATASETS: List[Dict] = [
 ]
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
-ZENODO_FILE_URL = "https://zenodo.org/records/{record_id}/files/{filename}?download=1"
+ZENODO_FILE_URL = "https://zenodo.org/api/records/{record_id}/files/{filename}/content"
 
 
 def _progress(block_count: int, block_size: int, total: int) -> None:
