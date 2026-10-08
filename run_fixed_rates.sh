@@ -22,7 +22,7 @@ DATASETS="sst2,ohsumed,reuters90,books,trec,20ng"
 INPUT_REP="jina-v5"
 BASE_RESULTS_DIR="${ROOT_DIR}/results/exp4-fixed-rates"
 
-RATES="10 15 20 25 30 35 40"
+RATES="40 50"
 
 echo "═══════════════════════════════════════════════════════════════════"
 echo "  Exp 4: SAE-IS at Fixed Reduction Rates"
