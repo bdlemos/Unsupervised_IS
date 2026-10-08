@@ -4,6 +4,7 @@ import gzip
 import time
 import argparse
 import numpy as np
+import pandas as pd
 import torch
 from pathlib import Path
 from sklearn.datasets import dump_svmlight_file
@@ -27,9 +28,16 @@ def load_texts(dataset_path: Path) -> list[str]:
         return [line.rstrip("\n") for line in f]
 
 
-def load_split(split_csv: Path) -> list[tuple[list[int], list[int]]]:
+def load_split(split_path: Path) -> list[tuple[list[int], list[int]]]:
+    if split_path.suffix == ".pkl":
+        split_frame = pd.read_pickle(split_path)
+        return [
+            (row.train_idxs, row.test_idxs)
+            for row in split_frame.itertuples(index=False)
+        ]
+
     splits = []
-    with open(split_csv, encoding="utf-8", errors="ignore") as f:
+    with open(split_path, encoding="utf-8", errors="ignore") as f:
         for line in f:
             parts = line.strip().split(";")
             train_idx = list(map(int, parts[0].split()))
@@ -81,8 +89,12 @@ def save_svmlight_gz(X: np.ndarray, labels: np.ndarray, out_path: Path):
 
 def process_dataset(dataset_path: Path, model, n_folds: int):
     split_csv = dataset_path / "splits" / f"split_{n_folds}.csv"
-    if not split_csv.exists():
-        return
+    split_pkl = dataset_path / "splits" / f"split_{n_folds}.pkl"
+    split_path = split_csv if split_csv.exists() else split_pkl
+    if not split_path.exists():
+        raise FileNotFoundError(
+            f"No split_{n_folds}.csv or split_{n_folds}.pkl found in {dataset_path / 'splits'}"
+        )
 
     out_dir = dataset_path / REPR_DIR
     out_dir.mkdir(exist_ok=True)
@@ -92,7 +104,7 @@ def process_dataset(dataset_path: Path, model, n_folds: int):
     with open(scores_path, "r", encoding="utf-8", errors="ignore") as f:
         labels = np.array([line.strip() for line in f], dtype=np.int32)
 
-    splits = load_split(split_csv)
+    splits = load_split(split_path)
 
     print(f"  [{dataset_path.name}] encoding {len(texts)} texts once ...")
     t_encode_start = time.time()
