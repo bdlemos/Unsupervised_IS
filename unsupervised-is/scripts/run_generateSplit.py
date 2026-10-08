@@ -127,6 +127,13 @@ def get_selector(method: str):
             random_state=13
         )
 
+    # ── Random IS at fixed reduction rates ──────────────────────────────
+    # Method names: random-rate-40, random-rate-60, etc. (rate_pct = % of data removed)
+    if method.startswith('random-rate-'):
+        rate_pct = int(method.split('-')[-1])
+        selection_rate = 1.0 - (rate_pct / 100.0)
+        return random_is.RandomIS(selection_rate=selection_rate, random_state=28101994)
+
     # ── ESAE sensitivity variants (Exp 3) ────────────────────────────────
     # Method names: esae-K50, esae-K100, esae-alpha5, esae-gamma03, esae-rmax03, etc.
     if method.startswith('esae-'):
