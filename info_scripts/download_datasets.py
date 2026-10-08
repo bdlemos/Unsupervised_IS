@@ -21,6 +21,7 @@ import argparse
 import os
 import shutil
 import sys
+import time
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -176,10 +177,36 @@ def _progress(block_count: int, block_size: int, total: int) -> None:
         print(f"\r  [{bar}] {pct:3d}%  ({downloaded // 1024 // 1024} MB)", end="", flush=True)
 
 
-def download_file(url: str, dest: Path) -> None:
+def download_file(url: str, dest: Path, max_retries: int = 5) -> None:
     print(f"  Downloading {dest.name} ...")
-    urllib.request.urlretrieve(url, dest, reporthook=_progress)
-    print()  # newline after progress bar
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+    req = urllib.request.Request(url, headers=headers)
+    for attempt in range(1, max_retries + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=60) as response, open(dest, "wb") as out_file:
+                total_size = int(response.info().get("Content-Length", -1))
+                downloaded = 0
+                block_size = 1024 * 1024
+                while True:
+                    chunk = response.read(block_size)
+                    if not chunk:
+                        break
+                    out_file.write(chunk)
+                    downloaded += len(chunk)
+                    if total_size > 0:
+                        pct = min(100, downloaded * 100 // total_size)
+                        bar = "#" * (pct // 2) + "-" * (50 - pct // 2)
+                        print(f"\r  [{bar}] {pct:3d}%  ({downloaded // 1024 // 1024} MB)", end="", flush=True)
+            print()
+            return
+        except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError) as e:
+            if dest.exists():
+                dest.unlink()
+            if attempt == max_retries:
+                raise
+            wait_time = attempt * 5
+            print(f"\n  [Aviso] Falha ({e}). Tentando novamente em {wait_time}s (tentativa {attempt}/{max_retries})...")
+            time.sleep(wait_time)
 
 
 def reorganize(dataset_dir: Path) -> None:
