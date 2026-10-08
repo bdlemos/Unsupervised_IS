@@ -257,6 +257,9 @@ python info_scripts/download_datasets.py
 
 # Baixar apenas um dataset específico
 python info_scripts/download_datasets.py webkb
+
+# Baixar um dataset e gerar seus embeddings Jina v5 (10 folds)
+bash info_scripts/prepare_dataset_jina.sh webkb
 ```
 
 O script baixa os ZIPs do Zenodo, extrai e organiza na estrutura esperada:
@@ -271,7 +274,7 @@ datasets/<name>/
 
 **21 datasets disponíveis:** `20ng`, `acm`, `agnews`, `books`, `dblp`, `medline`, `movie_review`, `mpqa`, `ohsumed`, `pang_movie`, `reuters90`, `sst1`, `sst2`, `subj`, `trec`, `twitter`, `vader_movie`, `webkb`, `wos5736`, `wos11967`, `yelp_2013`, `yelp_reviews`.
 
-> **Nota:** Os embeddings `jina-v5` (256-dim) devem ser gerados separadamente e colocados em `datasets/<name>/jina-v5/`.
+O wrapper também gera os embeddings `jina-v5` (256 dimensões) em `datasets/<name>/jina-v5/`. Para usar outro diretório, defina `DATASETS_DIR` antes de executar.
 
 ---
 
