@@ -28,7 +28,7 @@ theta = 0.2
 low_percentile = 40
 high_percentile = 70
 
-def get_selector(method: str):
+def get_selector(method: str, args=None):
 
     #Baselines
     if method == 'no-is':   return no_is.NoIS()
@@ -114,17 +114,37 @@ def get_selector(method: str):
     if method == 'ablation-cluster-uniform-ae':
         return ablation_methods.AblationClusterUniformAE()
 
-    # ── SAE-IS at fixed rates (Exp 4) ────────────────────────────────────
-    # Method names: sae-rate-10, sae-rate-15, ..., sae-rate-40
-    if method.startswith('sae-rate-'):
-        rate_pct = int(method.split('-')[-1])
-        rate = rate_pct / 100.0
+    # ── SAE-IS at fixed rates (Exp 4 & Diag) ──────────────────────────────
+    # Method names: sae-rate-10, sae-rate-40, sae-cleaning-rate-40, sae-beta10-rate-40, etc.
+    if method.startswith(('sae-', 'sae_', 'original-rate-', 'cleaning-rate-')):
+        import re
+        mode = 'cleaning' if 'clean' in method else 'original'
+        if args is not None and getattr(args, 'mode', None):
+            mode = args.mode
+        elif os.environ.get('SAE_MODE'):
+            mode = os.environ['SAE_MODE']
+
+        m_beta = re.search(r'beta([0-9.]+)', method)
+        if m_beta:
+            beta_val = float(m_beta.group(1))
+        elif args is not None and getattr(args, 'beta', None) is not None:
+            beta_val = args.beta
+        elif os.environ.get('SAE_BETA'):
+            beta_val = float(os.environ['SAE_BETA'])
+        else:
+            beta_val = 1.0
+
+        m_rate = re.search(r'rate[-_]?(\d+)', method)
+        rate = int(m_rate.group(1)) / 100.0 if m_rate else 0.30
+
         return sublinear_ae_is.SublinearAEIS(
             target_reduction=rate,
             n_clusters=-1,
             gamma=0.5,
             ae_epochs=50,
-            random_state=13
+            random_state=13,
+            mode=mode,
+            beta=beta_val
         )
 
     # ── Random IS at fixed reduction rates ──────────────────────────────
@@ -170,14 +190,14 @@ def get_selector(method: str):
     return None
 
 
-def get_selection(X, y, fold, args, info):
+def get_selection(X, y, fold, args, info, old_train_idxs=None):
 
     method = args.method
 
     total = Counter(y)
     logger.debug(f"Total instances number: {total}")
 
-    selector = get_selector(method)
+    selector = get_selector(method, args=args)
 
     selector.fit(X, y)
 
@@ -192,6 +212,27 @@ def get_selection(X, y, fold, args, info):
         info['theta'] = selector.theta
 
     logger.info("Result: ", Counter(y[selector.sample_indices_]))
+
+    # Diagnostic parquet saving (turned OFF by default)
+    save_diag = getattr(args, 'save_diag', False) or (os.environ.get('SAE_SAVE_DIAG', '0').lower() in ('1', 'true'))
+    if save_diag and hasattr(selector, 'scores_') and hasattr(selector, 'labels_') and old_train_idxs is not None:
+        diag_base = getattr(args, 'diag_dir', '') or os.environ.get('SAE_DIAG_DIR', '')
+        if not diag_base:
+            diag_base = os.path.abspath(os.path.join(args.out, '..'))
+        diag_dir = os.path.join(diag_base, 'diag', args.dataset, args.method)
+        os.makedirs(diag_dir, exist_ok=True)
+        diag_file = os.path.join(diag_dir, f"fold_{fold}.parquet")
+
+        df_diag = pd.DataFrame({
+            'idx': np.array(old_train_idxs, dtype=np.int64),
+            're_score': selector.scores_.astype(np.float64),
+            'cell_id': selector.labels_.astype(np.int64),
+            'cell_size': selector.cluster_sizes_[selector.labels_].astype(np.int64),
+            'cell_quota_keep': selector.cluster_quotas_[selector.labels_].astype(np.int64),
+            'kept': selector.mask.astype(bool),
+        })
+        df_diag.to_parquet(diag_file, index=False)
+        print(f"[DIAG] Saved {diag_file}")
 
     return selector.sample_indices_
 
@@ -236,7 +277,7 @@ def main():
 
         ti = time.time()
 
-        idxs_docs = get_selection(X_train, y_train, f, args, info)
+        idxs_docs = get_selection(X_train, y_train, f, args, info, old_train_idxs=splits_df.loc[f].train_idxs)
 
         s = len(y_train[idxs_docs])
         r = (t-s)/t
