@@ -90,6 +90,8 @@ class SublinearAEIS(InstanceSelectionMixin):
         gamma: float = 0.5,
         ae_epochs: int = 50,
         random_state: int = 0,
+        mode: str = "original",
+        beta: float = 1.0,
         **ae_kwargs
     ) -> None:
         self.target_reduction = target_reduction
@@ -97,6 +99,8 @@ class SublinearAEIS(InstanceSelectionMixin):
         self.gamma = gamma
         self.ae_epochs = ae_epochs
         self.random_state = random_state
+        self.mode = mode
+        self.beta = beta
         self.ae_kwargs = ae_kwargs
         self.sample_indices_ = []
 
@@ -161,6 +165,8 @@ class SublinearAEIS(InstanceSelectionMixin):
         # Step 4: Redundancy removal via AE Scores
         # ------------------------------------------------------------------
         mask = np.ones(n_samples, dtype=bool)
+        cluster_quotas = np.array([min(s, int(np.ceil(lam * (s ** self.gamma)))) for s in sizes])
+        self.cluster_quotas_ = cluster_quotas
 
         for c in range(n_clusters):
             cluster_idx = np.where(labels == c)[0]
@@ -169,18 +175,21 @@ class SublinearAEIS(InstanceSelectionMixin):
             if s_c == 0:
                 continue
 
-            keep_count = min(s_c, int(np.ceil(lam * (s_c ** self.gamma))))
+            keep_count = cluster_quotas[c]
             remove_count = s_c - keep_count
 
             if remove_count > 0:
                 c_scores = scores[cluster_idx]
 
-                # Inverse scores: low error → high removal probability
-                inv_scores = 1.0 / (c_scores + 1e-8)
-                p_remove = inv_scores / np.sum(inv_scores)
-
-                # Direct scores: higher error → higher removal probability (preserves low error prototypes)
-                # p_remove = (c_scores + 1e-8) / np.sum(c_scores + 1e-8)
+                if self.mode == "cleaning":
+                    # Direct scores: higher error → higher removal probability
+                    weights = (c_scores + 1e-8) ** self.beta
+                    p_remove = weights / np.sum(weights)
+                else:
+                    # Inverse scores: low error → high removal probability
+                    inv_scores = 1.0 / (c_scores + 1e-8)
+                    weights = inv_scores ** self.beta
+                    p_remove = weights / np.sum(weights)
 
                 # Sample the instances to remove probabilistically without replacement
                 to_remove_local = np.random.choice(

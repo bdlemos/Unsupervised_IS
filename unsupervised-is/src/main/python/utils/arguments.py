@@ -32,6 +32,10 @@ def arguments():
     parser.add_argument("--out", required=True)
     parser.add_argument("--datain", required=True)
     parser.add_argument("--overwrite", default=1)
+    parser.add_argument("--save-diag", type=lambda x: bool(str2bool(x)), default=False)
+    parser.add_argument("--diag-dir", type=str, default="")
+    parser.add_argument("--beta", type=float, default=None)
+    parser.add_argument("--mode", type=str, default=None)
 
     args = parser.parse_args()
 
