@@ -221,8 +221,11 @@ class EntropySublinearAEIS(InstanceSelectionMixin):
                 c_scores = scores[cluster_idx]
 
                 # Inverse scores: low error → high removal probability
-                inv_scores = 1.0 / (c_scores + 1e-8)
-                p_remove = inv_scores / np.sum(inv_scores)
+                # inv_scores = 1.0 / (c_scores + 1e-8)
+                # p_remove = inv_scores / np.sum(inv_scores)
+
+                # Direct scores: higher error → higher removal probability (preserves low error prototypes)
+                p_remove = (c_scores + 1e-8) / np.sum(c_scores + 1e-8)
 
                 to_remove_local = np.random.choice(
                     len(cluster_idx),

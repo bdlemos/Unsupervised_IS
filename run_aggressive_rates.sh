@@ -16,7 +16,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DATASETS="webkb,dblp,books,agnews,acm,20ng,sst1"
+DATASETS="acm,20ng,sst1"
 INPUT_REP="jina-v5"
 BASE_RESULTS_DIR="${ROOT_DIR}/results/exp-aggressive-rates"
 RATES="40 60"
@@ -40,7 +40,7 @@ for rate in ${RATES}; do
 
     # Runs both methods together into the same directory for direct comparison
     RESULTS_DIR="${RESULTS_DIR}" bash "${ROOT_DIR}/run_pipeline.sh" \
-        --methods "sae-rate-${rate},random-rate-${rate}" \
+        --methods "sae-rate-${rate}" \
         --datasets "${DATASETS}" \
         --inputrep "${INPUT_REP}" \
         --model "modernbert"

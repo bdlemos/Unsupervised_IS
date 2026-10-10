@@ -2,40 +2,40 @@
 Sublinear Autoencoder Instance Selection (SublinearAEIS)
 Sublinear Spatial Autoencoding for Instance Selection
 ========================================================
-"Beyond Sparsity: Sublinear Spatial Autoencoding for Unsupervised Instance 
-Selection in Imbalanced Text Classification" ou 
-"Challenging the Sparsity Assumption: A Sublinear Boundary-Preserving Framework 
+"Beyond Sparsity: Sublinear Spatial Autoencoding for Unsupervised Instance
+Selection in Imbalanced Text Classification" ou
+"Challenging the Sparsity Assumption: A Sublinear Boundary-Preserving Framework
 for Unsupervised Instance Selection"
 
 
 An advanced unsupervised instance selection method that fuses Spatial Sublinear
-Sampling with Deep Autoencoder Reconstruction Scoring to achieve extreme 
+Sampling with Deep Autoencoder Reconstruction Scoring to achieve extreme
 robustness against both imbalance and overlapping distributions.
 
 Core Idea
 ---------
 1. **Autoencoder Scoring (The "What to Remove")**:
-   We train an Autoencoder to reconstruct the feature space. Instances that are 
-   highly redundant and typical of the majority classes will have a very LOW 
-   reconstruction error. Rare, minority, or boundary instances will have HIGH 
+   We train an Autoencoder to reconstruct the feature space. Instances that are
+   highly redundant and typical of the majority classes will have a very LOW
+   reconstruction error. Rare, minority, or boundary instances will have HIGH
    reconstruction errors.
 
 2. **Micro-clustering & Sublinear Sampling (The "How Much to Remove")**:
-   We tessellate the space into K micro-clusters. We cap the retention of each 
+   We tessellate the space into K micro-clusters. We cap the retention of each
    cluster using a sublinear function of its size: $K_c = \\lambda \\cdot S_c^\\gamma$.
    This strongly flattens the distribution, forcing large dense clusters (majority)
    to lose many instances while protecting sparse/small clusters.
 
 3. **Synergy (The "Selection")**:
-   Within each micro-cluster, instead of blindly removing instances close to the 
-   centroid (which fails if an ultra-minority instance happens to be in the center), 
-   we sort instances by their Autoencoder Reconstruction Error. We remove the 
-   instances with the **lowest** errors (the most redundant) and keep those with 
-   the **highest** errors (the rarest/most boundary-like) - probabilistically 
+   Within each micro-cluster, instead of blindly removing instances close to the
+   centroid (which fails if an ultra-minority instance happens to be in the center),
+   we sort instances by their Autoencoder Reconstruction Error. We remove the
+   instances with the **lowest** errors (the most redundant) and keep those with
+   the **highest** errors (the rarest/most boundary-like) - probabilistically
    based on the inverse of the reconstruction error.
 
-This ensures that even if an extreme long-tail class (e.g., 2 instances) falls 
-into a massive majority micro-cluster, its Autoencoder error will be extremely 
+This ensures that even if an extreme long-tail class (e.g., 2 instances) falls
+into a massive majority micro-cluster, its Autoencoder error will be extremely
 high, protecting it from deletion.
 
 Parameters
@@ -71,7 +71,7 @@ def _find_lambda(sizes: np.ndarray, gamma: float, target_keep_count: int) -> flo
     for _ in range(50):
         mid = (low + high) / 2.0
         kept = sum(min(s, int(np.ceil(mid * (s ** gamma)))) for s in sizes)
-        
+
         if kept >= target_keep_count:
             best_lam = mid
             high = mid
@@ -82,7 +82,7 @@ def _find_lambda(sizes: np.ndarray, gamma: float, target_keep_count: int) -> flo
 
 
 class SublinearAEIS(InstanceSelectionMixin):
-    
+
     def __init__(
         self,
         target_reduction: float = 0.30,
@@ -109,7 +109,7 @@ class SublinearAEIS(InstanceSelectionMixin):
         X = self._to_dense(X)
         X, y = check_X_y(X, y, accept_sparse=False)
         n_samples = len(y)
-        
+
         target_keep_count = int(n_samples * (1.0 - self.target_reduction))
         print(f"[SublinearAEIS] Target reduction: {self.target_reduction:.2%} "
               f"(Keeping {target_keep_count} / {n_samples} instances)")
@@ -142,11 +142,11 @@ class SublinearAEIS(InstanceSelectionMixin):
             n_clusters = max(2, min(self.n_clusters, n_samples // 10))
         else:
             n_clusters = int(np.sqrt(n_samples))
-            
+
         print(f"[SublinearAEIS] Step 2 — Tessellating space into {n_clusters} micro-clusters...")
         km = MiniBatchKMeans(n_clusters=n_clusters, random_state=self.random_state, n_init=3)
         labels = km.fit_predict(X)
-        
+
         sizes = np.bincount(labels, minlength=n_clusters)
         self.labels_ = labels
         self.cluster_sizes_ = sizes
@@ -161,27 +161,27 @@ class SublinearAEIS(InstanceSelectionMixin):
         # Step 4: Redundancy removal via AE Scores
         # ------------------------------------------------------------------
         mask = np.ones(n_samples, dtype=bool)
-        
+
         for c in range(n_clusters):
             cluster_idx = np.where(labels == c)[0]
             s_c = len(cluster_idx)
-            
+
             if s_c == 0:
                 continue
-                
+
             keep_count = min(s_c, int(np.ceil(lam * (s_c ** self.gamma))))
             remove_count = s_c - keep_count
-            
+
             if remove_count > 0:
                 c_scores = scores[cluster_idx]
-                
-                # Invert the scores so that LOW errors have HIGH probabilities of removal
-                # We add a small epsilon to avoid division by zero
+
+                # Inverse scores: low error → high removal probability
                 inv_scores = 1.0 / (c_scores + 1e-8)
-                
-                # Normalize to create a probability distribution
                 p_remove = inv_scores / np.sum(inv_scores)
-                
+
+                # Direct scores: higher error → higher removal probability (preserves low error prototypes)
+                # p_remove = (c_scores + 1e-8) / np.sum(c_scores + 1e-8)
+
                 # Sample the instances to remove probabilistically without replacement
                 to_remove_local = np.random.choice(
                     len(cluster_idx),
@@ -189,7 +189,7 @@ class SublinearAEIS(InstanceSelectionMixin):
                     replace=False,
                     p=p_remove
                 )
-                
+
                 to_remove = cluster_idx[to_remove_local]
                 mask[to_remove] = False
 

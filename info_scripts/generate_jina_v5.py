@@ -19,7 +19,7 @@ DATASETS_BASE = Path(os.environ.get("DATASETS_DIR", Path(__file__).resolve().par
 MODEL_ID = "jinaai/jina-embeddings-v5-text-small"
 REPR_DIR = "jina-v5"
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-BATCH_SIZE = 8
+BATCH_SIZE = 2
 TRUNCATE_DIM = 256
 DTYPE = torch.bfloat16
 
