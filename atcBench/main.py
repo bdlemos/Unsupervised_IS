@@ -70,6 +70,26 @@ def rewrite_combo_data_override(argv):
                     f"data.is_method={method}",
                 ])
                 matched = True
+            elif not matched and "_sae-softmax-rate-" in value:
+                parts = value.rsplit("_sae-softmax-rate-", 1)
+                dataset_name = parts[0]
+                method = "sae-softmax-rate-" + parts[1]
+                rewritten.extend([
+                    "data=template",
+                    f"data.dataset_name={dataset_name}",
+                    f"data.is_method={method}",
+                ])
+                matched = True
+            elif not matched and "_sae-clean-rate-" in value:
+                parts = value.rsplit("_sae-clean-rate-", 1)
+                dataset_name = parts[0]
+                method = "sae-clean-rate-" + parts[1]
+                rewritten.extend([
+                    "data=template",
+                    f"data.dataset_name={dataset_name}",
+                    f"data.is_method={method}",
+                ])
+                matched = True
 
             if not matched:
                 rewritten.append(arg)

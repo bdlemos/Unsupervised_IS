@@ -11,7 +11,7 @@ import os
 import pandas as pd
 from collections import Counter
 from src.main.python.iSel import perplexity_is, biois, autoencoder_is, iforest_is, gmm_is, cluster_is
-from src.main.python.iSel import random_is, no_is, adaptive_is, adaptive_v2_is, adaptive_cluster_is, sublinear_ae_is
+from src.main.python.iSel import random_is, no_is, adaptive_is, adaptive_v2_is, adaptive_cluster_is, sublinear_ae_is, sublinear_softmax_ae_is
 from src.main.python.iSel import entropy_sublinear_ae_is
 from src.main.python.iSel import ablation_methods
 from src.main.python.iSel import e2sc, cnn, lssm, lsbo
@@ -113,6 +113,42 @@ def get_selector(method: str, args=None):
 
     if method == 'ablation-cluster-uniform-ae':
         return ablation_methods.AblationClusterUniformAE()
+
+    # ── Sublinear Softmax AE IS (Caminho 2: Z-Score intra-cluster + Softmax com tau) ──────
+    # Method names: sae-softmax-rate-40, sae-clean-rate-40, sae-softmax-tau05-rate-40, etc.
+    if method.startswith(('sae-softmax-', 'sae-clean-')):
+        import re
+        mode = 'original' if 'orig' in method else 'cleaning'
+        if args is not None and getattr(args, 'mode', None):
+            mode = args.mode
+        elif os.environ.get('SAE_MODE'):
+            mode = os.environ['SAE_MODE']
+
+        m_tau = re.search(r'tau([0-9._]+)', method)
+        if m_tau:
+            tau_str = m_tau.group(1).replace('_', '.')
+            if tau_str.startswith('0') and not tau_str.startswith('0.') and len(tau_str) > 1:
+                tau_str = '0.' + tau_str[1:]
+            tau_val = float(tau_str)
+        elif args is not None and getattr(args, 'tau', None) is not None:
+            tau_val = args.tau
+        elif os.environ.get('SAE_TAU'):
+            tau_val = float(os.environ['SAE_TAU'])
+        else:
+            tau_val = 1.0
+
+        m_rate = re.search(r'rate[-_]?(\d+)', method)
+        rate = int(m_rate.group(1)) / 100.0 if m_rate else 0.30
+
+        return sublinear_softmax_ae_is.SublinearSoftmaxAEIS(
+            target_reduction=rate,
+            n_clusters=-1,
+            gamma=0.5,
+            ae_epochs=50,
+            random_state=13,
+            mode=mode,
+            tau=tau_val
+        )
 
     # ── SAE-IS at fixed rates (Exp 4 & Diag) ──────────────────────────────
     # Method names: sae-rate-10, sae-rate-40, sae-cleaning-rate-40, sae-beta10-rate-40, etc.

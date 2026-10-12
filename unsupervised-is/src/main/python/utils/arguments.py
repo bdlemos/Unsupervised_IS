@@ -36,6 +36,7 @@ def arguments():
     parser.add_argument("--diag-dir", type=str, default="")
     parser.add_argument("--beta", type=float, default=None)
     parser.add_argument("--mode", type=str, default=None)
+    parser.add_argument("--tau", type=float, default=None)
 
     args = parser.parse_args()
 
