@@ -16,13 +16,13 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DATASETS="acm,20ng,sst1"
-INPUT_REP="jina-v5"
+DATASETS="${DATASETS:-books,dblp,webkb}"
+INPUT_REP="${INPUT_REP:-jina-v5}"
 BASE_RESULTS_DIR="${ROOT_DIR}/results/exp-aggressive-rates"
-RATES="40 60"
+RATES="${RATES:-40 60}"
 
 echo "═══════════════════════════════════════════════════════════════════"
-echo "  Aggressive Rates Experiment: SAE-IS vs Random IS"
+echo "  Aggressive Rates Experiment: SAE-IS vs Random IS vs Softmax SAE"
 echo "  Datasets:    ${DATASETS}"
 echo "  Input Rep:   ${INPUT_REP}"
 echo "  Rates:       ${RATES}"
@@ -32,18 +32,30 @@ echo "════════════════════════�
 for rate in ${RATES}; do
     RESULTS_DIR="${BASE_RESULTS_DIR}/rate_${rate}"
 
+    if [[ -n "${METHODS:-}" ]]; then
+        RATE_METHODS="${METHODS//\{rate\}/$rate}"
+    else
+        RATE_METHODS="sae-softmax-rate-${rate},sae-rate-${rate},random-rate-${rate}"
+    fi
+
     echo ""
     echo "───────────────────────────────────────────────────────────────"
-    echo "  Running SAE-IS and Random IS at ${rate}% reduction"
+    echo "  Running methods [${RATE_METHODS}] at ${rate}% reduction"
     echo "  Target dir: ${RESULTS_DIR}"
     echo "───────────────────────────────────────────────────────────────"
 
-    # Runs both methods together into the same directory for direct comparison
-    RESULTS_DIR="${RESULTS_DIR}" bash "${ROOT_DIR}/run_pipeline.sh" \
-        --methods "sae-rate-${rate}" \
-        --datasets "${DATASETS}" \
-        --inputrep "${INPUT_REP}" \
+    PIPELINE_ARGS=(
+        --methods "${RATE_METHODS}"
+        --datasets "${DATASETS}"
+        --inputrep "${INPUT_REP}"
         --model "modernbert"
+    )
+    if [[ -n "${STEPS:-}" ]]; then
+        PIPELINE_ARGS+=(--steps "${STEPS}")
+    fi
+
+    # Runs methods together into the same directory for direct comparison
+    RESULTS_DIR="${RESULTS_DIR}" bash "${ROOT_DIR}/run_pipeline.sh" "${PIPELINE_ARGS[@]}"
 done
 
 echo ""
