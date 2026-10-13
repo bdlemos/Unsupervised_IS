@@ -15,6 +15,7 @@ from src.main.python.iSel import random_is, no_is, adaptive_is, adaptive_v2_is, 
 from src.main.python.iSel import entropy_sublinear_ae_is
 from src.main.python.iSel import ablation_methods
 from src.main.python.iSel import e2sc, cnn, lssm, lsbo
+from src.main.python.iSel import cluster_random_is, typicality_cover_is, diffusion_cover_is
 
 import socket
 
@@ -222,6 +223,45 @@ def get_selector(method: str, args=None):
             params['n_clusters'] = 99999  # will be clamped to sqrt(N) inside ESAE
 
         return entropy_sublinear_ae_is.EntropySublinearAEIS(**params)
+
+    # ── Cluster-Random IS ──────────────────────────────────────────────
+    if method.startswith(('cluster-random-', 'cluster-random_')):
+        import re
+        m_rate = re.search(r'rate[-_]?(\d+)', method)
+        rate = int(m_rate.group(1)) / 100.0 if m_rate else 0.50
+        m_gamma = re.search(r'gamma[-_]?([0-9.]+)', method)
+        gamma = float(m_gamma.group(1)) if m_gamma else 0.5
+        return cluster_random_is.ClusterRandomIS(
+            target_reduction=rate,
+            gamma=gamma,
+            random_state=42
+        )
+
+    # ── Typicality-Cover IS ─────────────────────────────────────────────
+    if method.startswith(('typ-cover-', 'typ-cover_', 'typicality-cover-')):
+        import re
+        m_rate = re.search(r'rate[-_]?(\d+)', method)
+        rate = int(m_rate.group(1)) / 100.0 if m_rate else 0.50
+        m_gamma = re.search(r'gamma[-_]?([0-9.]+)', method)
+        gamma = float(m_gamma.group(1)) if m_gamma else 0.5
+        return typicality_cover_is.TypicalityCoverIS(
+            target_reduction=rate,
+            gamma=gamma,
+            random_state=42
+        )
+
+    # ── Diffusion-Cover IS ──────────────────────────────────────────────
+    if method.startswith(('diff-cover-', 'diff-cover_', 'diffusion-cover-', 'diffusion-cover_')):
+        import re
+        m_rate = re.search(r'rate[-_]?(\d+)', method)
+        rate = int(m_rate.group(1)) / 100.0 if m_rate else 0.50
+        m_gamma = re.search(r'gamma[-_]?([0-9.]+)', method)
+        gamma = float(m_gamma.group(1)) if m_gamma else 0.5
+        return diffusion_cover_is.DiffusionCoverIS(
+            target_reduction=rate,
+            gamma=gamma,
+            random_state=42
+        )
 
     return None
 
