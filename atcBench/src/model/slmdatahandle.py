@@ -73,9 +73,14 @@ def prep_data(X_train, y_train, X_val=None, y_val=None):
 	if X_val:
 		return X_train, y_train, X_val, y_val
 
-	sss = StratifiedShuffleSplit(n_splits=2, test_size=0.1, random_state=2018)
-	for train_index, val_index in sss.split(X_train, y_train):
-		continue
+	try:
+		sss = StratifiedShuffleSplit(n_splits=2, test_size=0.1, random_state=2018)
+		for train_index, val_index in sss.split(X_train, y_train):
+			continue
+	except ValueError:
+		from sklearn.model_selection import train_test_split
+		idx = np.arange(len(y_train))
+		train_index, val_index = train_test_split(idx, test_size=0.1, random_state=2018)
 
 	X_train_new = [X_train[x] for x in train_index]
 	y_train_new = [y_train[x] for x in train_index]
