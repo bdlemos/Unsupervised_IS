@@ -22,6 +22,7 @@ from sklearn.cluster import MiniBatchKMeans
 
 REPO_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, os.path.join(REPO_DIR, 'unsupervised-is'))
+sys.path.insert(0, os.path.join(REPO_DIR, 'scripts', 'proxy_budget'))
 from scripts.run_generateSplit import get_selector
 from proxy_lib import load_fold, _quotas
 
@@ -33,6 +34,8 @@ def get_sae_clean_idx(dataset, fold, n_keep, seed):
     fpath = os.path.join(DIAG_ROOT, dataset, 'sae-rate-40', f'fold_{fold}.parquet')
     if not os.path.exists(fpath):
         fpath = os.path.join(DIAG_ROOT, dataset, 'sae-rate-60', f'fold_{fold}.parquet')
+    if not os.path.exists(fpath):
+        return None
     df = pd.read_parquet(fpath)
     cell_ids = df['cell_id'].values
     scores = df['re_score'].values
@@ -67,9 +70,11 @@ def process_single_fold(dataset, fold, rate, m, orig_splits):
     n_samples = len(orig_tr)
     n_keep = max(int(round(n_samples * (1 - rate / 100))), 2)
     
+    idx_local = None
     if m == 'sae-clean':
         idx_local = get_sae_clean_idx(dataset, fold, n_keep, seed=2000 + fold)
-    else:
+        
+    if idx_local is None:
         method_name = f'{m}-rate-{rate}'
         selector = get_selector(method_name)
         if selector is None:
@@ -82,27 +87,30 @@ def process_single_fold(dataset, fold, rate, m, orig_splits):
     return fold, global_tr, orig_te, list(idx_local)
 
 
-def generate_splits(dataset, rate=98, methods=None):
+def generate_splits(dataset, rate=98, methods=None, n_folds=None):
     if methods is None:
         methods = ['random', 'typ-cover', 'diff-cover', 'sae-clean']
+        
+    if n_folds is None:
+        n_folds = 5 if dataset == 'agnews' else 10
         
     out_dir = os.path.join(BASE_OUT, f'rate_{rate}', 'instance_selection', 'selection', dataset)
     os.makedirs(out_dir, exist_ok=True)
     
-    orig_split_file = os.path.join(REPO_DIR, 'datasets', dataset, 'splits', 'split_10.pkl')
+    orig_split_file = os.path.join(REPO_DIR, 'datasets', dataset, 'splits', f'split_{n_folds}.pkl')
     with open(orig_split_file, 'rb') as f:
         orig_splits = pickle.load(f)
         
     for m in methods:
         m_name = f'{m}-rate-{rate}'
-        target_f = os.path.join(out_dir, f'split_10_{m_name}.pkl')
+        target_f = os.path.join(out_dir, f'split_{n_folds}_{m_name}.pkl')
         if os.path.exists(target_f):
             print(f"  -> [CACHED] {target_f} already exists, skipping.")
             continue
-        print(f"Generating {dataset} | {m_name} in parallel...")
+        print(f"Generating {dataset} | {m_name} (folds={n_folds}) in parallel...")
         
-        results = Parallel(n_jobs=10)(
-            delayed(process_single_fold)(dataset, fold, rate, m, orig_splits) for fold in range(10)
+        results = Parallel(n_jobs=min(n_folds, 10))(
+            delayed(process_single_fold)(dataset, fold, rate, m, orig_splits) for fold in range(n_folds)
         )
         # Sort by fold index
         results.sort(key=lambda x: x[0])
@@ -111,17 +119,17 @@ def generate_splits(dataset, rate=98, methods=None):
         test_idxs_global = [r[2] for r in results]
         train_idxs_infold = [r[3] for r in results]
             
-        # Save split_10.pkl
+        # Save split_<n_folds>.pkl
         df_global = pd.DataFrame({'train_idxs': train_idxs_global, 'test_idxs': test_idxs_global})
-        with open(os.path.join(out_dir, f'split_10_{m_name}.pkl'), 'wb') as f:
+        with open(os.path.join(out_dir, f'split_{n_folds}_{m_name}.pkl'), 'wb') as f:
             pickle.dump(df_global, f)
             
-        # Save split_10_idxinfold.pkl
+        # Save split_<n_folds>_idxinfold.pkl
         df_infold = pd.DataFrame({'train_idxs': train_idxs_infold, 'test_idxs': test_idxs_global})
-        with open(os.path.join(out_dir, f'split_10_{m_name}_idxinfold.pkl'), 'wb') as f:
+        with open(os.path.join(out_dir, f'split_{n_folds}_{m_name}_idxinfold.pkl'), 'wb') as f:
             pickle.dump(df_infold, f)
             
-        print(f"  -> Saved {out_dir}/split_10_{m_name}.pkl (n_keep={len(train_idxs_global[0])})")
+        print(f"  -> Saved {out_dir}/split_{n_folds}_{m_name}.pkl (n_keep={len(train_idxs_global[0])})")
 
 
 def main():
@@ -129,10 +137,11 @@ def main():
     ap.add_argument('--dataset', default='books,acm,dblp,20ng,webkb')
     ap.add_argument('--rate', type=int, default=98)
     ap.add_argument('--methods', default='random,typ-cover,diff-cover,sae-clean')
+    ap.add_argument('--folds', type=int, default=None)
     a = ap.parse_args()
     
     for ds in a.dataset.split(','):
-        generate_splits(ds, rate=a.rate, methods=a.methods.split(','))
+        generate_splits(ds, rate=a.rate, methods=a.methods.split(','), n_folds=a.folds)
 
 
 if __name__ == '__main__':

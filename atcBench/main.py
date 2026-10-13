@@ -89,20 +89,27 @@ def rewrite_combo_data_override(argv):
                     f"data.dataset_name={dataset_name}",
                     f"data.is_method={method}",
                 ])
+                if dataset_name == "agnews":
+                    rewritten.append("data.nfolds=5")
                 matched = True
 
             # Generic fallback: any dataset_method where dataset is a known dataset
             if not matched and "_" in value:
                 parts = value.split("_", 1)
-                if parts[0] in {"20ng", "acm", "books", "dblp", "webkb", "sst1", "mpqa", "reuters90", "ohsumed", "twitter", "yelp_reviews", "sst2"}:
+                if parts[0] in {"20ng", "acm", "books", "dblp", "webkb", "sst1", "mpqa", "reuters90", "ohsumed", "twitter", "yelp_reviews", "sst2", "agnews"}:
                     rewritten.extend([
                         "data=template",
                         f"data.dataset_name={parts[0]}",
                         f"data.is_method={parts[1]}",
                     ])
+                    if parts[0] == "agnews":
+                        rewritten.append("data.nfolds=5")
                     matched = True
 
-            if not matched:
+            if matched:
+                if any(r == "data.dataset_name=agnews" for r in rewritten) and "data.nfolds=5" not in rewritten:
+                    rewritten.append("data.nfolds=5")
+            else:
                 rewritten.append(arg)
             continue
 

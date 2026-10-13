@@ -1,16 +1,16 @@
 #!/bin/bash
 
-# nohup ./run_pipeline.sh > pipeline_geral.log 2>&1 &
+# nohup ./bash/run_pipeline.sh > pipeline_geral.log 2>&1 &
 # Usage examples:
-#   ./run_pipeline.sh
-#   ./run_pipeline.sh --methods "adaptive-perplexity,adaptive-v2-perplexity" --datasets "mpqa,sst2"
-#   ./run_pipeline.sh --steps "1,2,3"
-#   ./run_pipeline.sh --steps "selection,benchmark"
+#   ./bash/run_pipeline.sh
+#   ./bash/run_pipeline.sh --methods "adaptive-perplexity,adaptive-v2-perplexity" --datasets "mpqa,sst2"
+#   ./bash/run_pipeline.sh --steps "1,2,3"
+#   ./bash/run_pipeline.sh --steps "selection,benchmark"
 
 # Exit immediately if a command exits with a non-zero status
 set -e
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="${ROOT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 if [[ -d "/app/venv" ]]; then
     VENV_PATH="/app/venv"
 else

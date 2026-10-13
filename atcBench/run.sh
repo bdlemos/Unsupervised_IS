@@ -82,9 +82,12 @@ printf "%s\n" "${combos[@]}" | xargs -n 1 -P "$NUM_PROCESSES" -I {} bash -c '
   mkdir -p "$log_dir"
   log_file="$log_dir/${method}.log"
   
-  out_dir="${RESULTS_DIR:-$ROOT_DIR/../results}/classificacao/output/modernbert/${combo}"
-  if [ -d "$out_dir" ] && [ $(ls -1 "$out_dir"/measures.fold_*.json 2>/dev/null | wc -l) -eq 10 ]; then
-    echo "[SKIP] $combo already has 10 folds completed, skipping."
+  expected_folds=10
+  if [ "$dataset" = "agnews" ]; then
+    expected_folds=5
+  fi
+  if [ -d "$out_dir" ] && [ $(ls -1 "$out_dir"/measures.fold_*.json 2>/dev/null | wc -l) -ge "$expected_folds" ]; then
+    echo "[SKIP] $combo already has $expected_folds folds completed, skipping."
     exit 0
   fi
 

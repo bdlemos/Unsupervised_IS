@@ -60,7 +60,7 @@ Os métodos são registrados em `scripts/run_generateSplit.py` na função `get_
 
 ### Execução
 
-A seleção é tipicamente invocada pelo pipeline principal (`run_pipeline.sh` Step 1), mas pode ser executada diretamente:
+A seleção é tipicamente invocada pelo pipeline principal (`bash/run_pipeline.sh` Step 1), mas pode ser executada diretamente:
 
 ```bash
 cd unsupervised-is

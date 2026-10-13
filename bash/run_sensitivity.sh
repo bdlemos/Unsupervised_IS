@@ -7,8 +7,8 @@
 # for all other parameters.
 #
 # Usage:
-#   bash run_sensitivity.sh
-#   nohup bash run_sensitivity.sh > exp3_sensitivity.log 2>&1 &
+#   bash bash/run_sensitivity.sh
+#   nohup bash bash/run_sensitivity.sh > exp3_sensitivity.log 2>&1 &
 #
 # Each configuration produces its own results directory under:
 #   results/exp3-sensitivity/<param>_<value>/
@@ -17,7 +17,8 @@
 
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="${ROOT_DIR:-$(cd "${SCRIPT_DIR}/.." && pwd)}"
 DATASETS="sst2,ohsumed,reuters90,books,trec,20ng"
 INPUT_REP="jina-v5"
 BASE_RESULTS_DIR="${ROOT_DIR}/results/exp3-sensitivity"
@@ -40,7 +41,7 @@ run_config() {
     echo "  Running: ${method_name} → ${results_dir}"
     echo "───────────────────────────────────────────────────────────────"
 
-    RESULTS_DIR="${results_dir}" bash "${ROOT_DIR}/run_pipeline.sh" \
+    RESULTS_DIR="${results_dir}" bash "${SCRIPT_DIR}/run_pipeline.sh" \
         --methods "${method_name}" \
         --datasets "${DATASETS}" \
         --inputrep "${INPUT_REP}" \

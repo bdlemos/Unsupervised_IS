@@ -28,13 +28,9 @@ COPY unsupervised-is/ ./unsupervised-is/
 # ─── Projeto 2: atcBench ─────────────────────────────────────────────────────
 COPY atcBench/ ./atcBench/
 
-# ─── Pipeline principal ───────────────────────────────────────────────────────
-# Ajusta ROOT_DIR do script para /app (de /home/bernardo/projects)
-COPY run_pipeline.sh ./run_pipeline.sh
-COPY run_sensitivity.sh ./run_sensitivity.sh
-COPY run_fixed_rates.sh ./run_fixed_rates.sh
+# ─── Scripts do Pipeline ───────────────────────────────────────────────────────
+COPY bash/ ./bash/
 
-RUN sed -i 's|ROOT_DIR=.*|ROOT_DIR="/app"|' run_pipeline.sh \
-    && chmod +x run_pipeline.sh
+RUN chmod +x bash/*.sh
 
-CMD ["bash", "run_pipeline.sh"]
+CMD ["bash", "bash/run_pipeline.sh"]

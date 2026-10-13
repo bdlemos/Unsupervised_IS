@@ -10,14 +10,15 @@
 #   results/exp4-fixed-rates/rate_<X>/
 #
 # Usage:
-#   bash run_fixed_rates.sh
-#   nohup bash run_fixed_rates.sh > exp4_fixed_rates.log 2>&1 &
+#   bash bash/run_fixed_rates.sh
+#   nohup bash bash/run_fixed_rates.sh > exp4_fixed_rates.log 2>&1 &
 #
 # ══════════════════════════════════════════════════════════════════════════════
 
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="${ROOT_DIR:-$(cd "${SCRIPT_DIR}/.." && pwd)}"
 DATASETS="sst2,ohsumed,reuters90,books,trec,20ng"
 INPUT_REP="jina-v5"
 BASE_RESULTS_DIR="${ROOT_DIR}/results/exp4-fixed-rates"
@@ -40,7 +41,7 @@ for rate in ${RATES}; do
     echo "  Running SAE-IS at ${rate}% reduction → ${RESULTS_DIR}"
     echo "───────────────────────────────────────────────────────────────"
 
-    RESULTS_DIR="${RESULTS_DIR}" bash "${ROOT_DIR}/run_pipeline.sh" \
+    RESULTS_DIR="${RESULTS_DIR}" bash "${SCRIPT_DIR}/run_pipeline.sh" \
         --methods "sae-rate-${rate}" \
         --datasets "${DATASETS}" \
         --inputrep "${INPUT_REP}" \
