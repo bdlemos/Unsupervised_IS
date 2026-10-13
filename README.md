@@ -11,9 +11,13 @@ Pipeline completo de seleção de instâncias não-supervisionada (`unsupervised
 ├── dockerfile                          # Imagem Docker do pipeline
 ├── .dockerignore                       # Exclui pastas grandes do build context
 ├── requirements.txt                    # Dependências unificadas de ambos os subprojetos
-├── run_pipeline.sh                     # Orquestrador principal (5 steps)
-├── run_sensitivity.sh                  # Exp 3: Sensitivity analysis do ESAE-IS
-├── run_fixed_rates.sh                  # Exp 4: SAE-IS at fixed reduction rates
+├── bash/                               # Scripts executáveis do pipeline e experimentos
+│   ├── run_pipeline.sh                 #   Orquestrador principal (5 steps)
+│   ├── run_sensitivity.sh              #   Exp 3: Sensitivity analysis do ESAE-IS
+│   ├── run_fixed_rates.sh              #   Exp 4: SAE-IS at fixed reduction rates
+│   ├── run_aggressive_rates.sh         #   Exp agressivo: taxas 40% e 60%
+│   ├── run_extreme_rates.sh            #   Exp extremo: taxas 98% e 99%
+│   └── run_extreme_overnight.sh        #   Runner overnight de taxas extremas
 ├── unsupervised-is/                    # Projeto de seleção de instâncias (ver README próprio)
 │   ├── scripts/run_generateSplit.py    #   Entry-point da seleção (registry de métodos)
 │   └── src/main/python/iSel/          #   Implementação dos métodos de IS
@@ -59,7 +63,7 @@ docker run -d --rm \
   -v $(pwd)/results:/app/results \
   --name pipeline-run \
   unsupervised-is \
-  bash -c 'bash run_pipeline.sh \
+  bash -c 'bash bash/run_pipeline.sh \
     --methods "entropy-sublinear-ae-is" \
     --datasets "sst2,ohsumed,reuters90" \
     --inputrep "jina-v5" > /app/host/pipeline.log 2>&1'
@@ -81,7 +85,7 @@ docker run -d --rm \
   -v $(pwd)/results:/app/results \
   --name exp2-ablation \
   unsupervised-is \
-  bash -c 'RESULTS_DIR=/app/results/exp2-ablation bash run_pipeline.sh \
+  bash -c 'RESULTS_DIR=/app/results/exp2-ablation bash bash/run_pipeline.sh \
     --methods "ablation-random-esae-rate,ablation-cluster-uniform" \
     --datasets "sst2,ohsumed,reuters90,books,trec,20ng" \
     --inputrep "jina-v5" 2>&1 | tee /app/results/exp2.log'
@@ -98,7 +102,7 @@ docker run -d --rm \
   --name exp3-sensitivity \
   unsupervised-is \
   bash -c 'source /app/venv/bin/activate && \
-    bash run_sensitivity.sh > /app/results/exp3.log 2>&1'
+    bash bash/run_sensitivity.sh > /app/results/exp3.log 2>&1'
 
 # Exp 4: Fixed Reduction Rates
 docker run -d --rm \
@@ -108,12 +112,12 @@ docker run -d --rm \
   --name exp4-fixed-rates \
   unsupervised-is \
   bash -c 'source /app/venv/bin/activate && \
-    bash run_fixed_rates.sh > /app/results/exp4.log 2>&1'
+    bash bash/run_fixed_rates.sh > /app/results/exp4.log 2>&1'
 ```
 
 ---
 
-## Parâmetros do `run_pipeline.sh`
+## Parâmetros do `bash/run_pipeline.sh`
 
 | Parâmetro | Descrição | Default | Exemplo |
 |---|---|---|---|
@@ -241,7 +245,7 @@ pip install -r requirements.txt
 
 ```bash
 # Run completo em background
-nohup bash run_pipeline.sh --methods "entropy-sublinear-ae-is" --inputrep "jina-v5" > pipeline.log 2>&1 &
+nohup bash bash/run_pipeline.sh --methods "entropy-sublinear-ae-is" --inputrep "jina-v5" > pipeline.log 2>&1 &
 tail -f pipeline.log
 ```
 

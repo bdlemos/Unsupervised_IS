@@ -19,7 +19,7 @@ DATASETS_BASE = Path(os.environ.get("DATASETS_DIR", Path(__file__).resolve().par
 MODEL_ID = "jinaai/jina-embeddings-v5-text-small"
 REPR_DIR = "jina-v5"
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-BATCH_SIZE = 2
+BATCH_SIZE = int(os.environ.get("BATCH_SIZE", "128"))
 TRUNCATE_DIM = 256
 DTYPE = torch.bfloat16
 
@@ -80,12 +80,8 @@ def encode_texts(model, texts: list[str]) -> np.ndarray:
 
 
 def save_svmlight_gz(X: np.ndarray, labels: np.ndarray, out_path: Path):
-    buf = []
-    for label, row in zip(labels, X):
-        pairs = " ".join(f"{i+1}:{v:.16g}" for i, v in enumerate(row))
-        buf.append(f"{int(label)} {pairs}\n")
-    with gzip.open(out_path, "wt", encoding="utf-8") as f:
-        f.writelines(buf)
+    with gzip.open(out_path, "wb") as f:
+        dump_svmlight_file(X, labels, f, zero_based=False)
 
 
 def process_dataset(dataset_path: Path, model, n_folds: int):
@@ -107,10 +103,17 @@ def process_dataset(dataset_path: Path, model, n_folds: int):
 
     splits = load_split(split_path)
 
-    print(f"  [{dataset_path.name}] encoding {len(texts)} texts once ...")
-    t_encode_start = time.time()
-    all_embeddings = encode_texts(model, texts)
-    encode_time = time.time() - t_encode_start
+    emb_cache = out_dir / "all_embeddings.npy"
+    if emb_cache.exists():
+        print(f"  [{dataset_path.name}] loading cached embeddings from {emb_cache} ...")
+        all_embeddings = np.load(emb_cache)
+        encode_time = 0.0
+    else:
+        print(f"  [{dataset_path.name}] encoding {len(texts)} texts once ...")
+        t_encode_start = time.time()
+        all_embeddings = encode_texts(model, texts)
+        encode_time = time.time() - t_encode_start
+        np.save(emb_cache, all_embeddings)
 
     fold_times = []
     for fold, (train_idx, test_idx) in enumerate(splits):

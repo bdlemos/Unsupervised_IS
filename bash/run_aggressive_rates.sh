@@ -8,14 +8,15 @@
 #   results/exp-aggressive-rates/rate_<X>/
 #
 # Usage:
-#   bash run_aggressive_rates.sh
-#   nohup bash run_aggressive_rates.sh > aggressive_rates.log 2>&1 &
+#   bash bash/run_aggressive_rates.sh
+#   nohup bash bash/run_aggressive_rates.sh > aggressive_rates.log 2>&1 &
 #
 # ══════════════════════════════════════════════════════════════════════════════
 
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="${ROOT_DIR:-$(cd "${SCRIPT_DIR}/.." && pwd)}"
 DATASETS="${DATASETS:-books,dblp,webkb}"
 INPUT_REP="${INPUT_REP:-jina-v5}"
 BASE_RESULTS_DIR="${ROOT_DIR}/results/exp-aggressive-rates"
@@ -35,7 +36,7 @@ for rate in ${RATES}; do
     if [[ -n "${METHODS:-}" ]]; then
         RATE_METHODS="${METHODS//\{rate\}/$rate}"
     else
-        RATE_METHODS="sae-softmax-rate-${rate},sae-rate-${rate},random-rate-${rate}"
+        RATE_METHODS="sae-softmax-rate-${rate},random-rate-${rate}"
     fi
 
     echo ""
@@ -55,7 +56,7 @@ for rate in ${RATES}; do
     fi
 
     # Runs methods together into the same directory for direct comparison
-    RESULTS_DIR="${RESULTS_DIR}" bash "${ROOT_DIR}/run_pipeline.sh" "${PIPELINE_ARGS[@]}"
+    RESULTS_DIR="${RESULTS_DIR}" bash "${SCRIPT_DIR}/run_pipeline.sh" "${PIPELINE_ARGS[@]}"
 done
 
 echo ""

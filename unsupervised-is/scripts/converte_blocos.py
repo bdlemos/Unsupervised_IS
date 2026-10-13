@@ -1,7 +1,9 @@
 # converte_blocos.py
 
-entrada = "texts.txt"
-saida = "texts_clean.txt"
+import sys
+
+entrada = sys.argv[1] if len(sys.argv) > 1 else "texts.txt"
+saida = sys.argv[2] if len(sys.argv) > 2 else "texts_clean.txt"
 
 with open(entrada, "r", encoding="utf-8") as f:
     conteudo = f.read()

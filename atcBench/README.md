@@ -88,6 +88,6 @@ Para cada combinação dataset × method × fold:
 
 | Variável | Descrição | Default |
 |---|---|---|
-| `RESULTS_DIR` | Diretório base para outputs | Herdado do `run_pipeline.sh` |
+| `RESULTS_DIR` | Diretório base para outputs | Herdado do `bash/run_pipeline.sh` |
 | `DATASETS_DIR` | Diretório dos datasets | `/app/datasets` (Docker) ou `../datasets` |
 | `TB_CONFIG_NAME` | Config Hydra a usar | `config_default.yaml` |

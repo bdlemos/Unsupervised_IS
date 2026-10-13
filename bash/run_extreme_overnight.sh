@@ -17,15 +17,16 @@
 #   results/exp-extreme-rates/rate_99/
 #
 # Usage:
-#   bash run_extreme_overnight.sh
+#   bash bash/run_extreme_overnight.sh
 #
 # In tmux:
-#   tmux new-session -s extreme-modernbert "bash run_extreme_overnight.sh"
+#   tmux new-session -s extreme-modernbert "bash bash/run_extreme_overnight.sh"
 # ══════════════════════════════════════════════════════════════════════════════
 
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="${ROOT_DIR:-$(cd "${SCRIPT_DIR}/.." && pwd)}"
 export ROOT_DIR
 export DATASETS_DIR="${DATASETS_DIR:-$ROOT_DIR/datasets}"
 
@@ -53,7 +54,7 @@ for r in $RATES; do
     echo ">>> Starting Extreme Rate: ${r}% Reduction at $(date)"
     echo "==================================================================="
     
-    RATE="$r" DATASETS="$DATASETS" BASE_METHODS="$BASE_METHODS" bash "${ROOT_DIR}/run_extreme_rates.sh"
+    RATE="$r" DATASETS="$DATASETS" BASE_METHODS="$BASE_METHODS" bash "${SCRIPT_DIR}/run_extreme_rates.sh"
     
     echo ">>> Finished Rate ${r}% at $(date)"
 done

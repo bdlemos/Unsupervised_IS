@@ -10,14 +10,15 @@
 #   results/exp-extreme-rates/rate_<RATE>/
 #
 # Usage:
-#   bash run_extreme_rates.sh
-#   RATE=98 DATASETS=acm bash run_extreme_rates.sh
-#   RATE=99 DATASETS=20ng,books bash run_extreme_rates.sh
+#   bash bash/run_extreme_rates.sh
+#   RATE=98 DATASETS=acm bash bash/run_extreme_rates.sh
+#   RATE=99 DATASETS=20ng,books bash bash/run_extreme_rates.sh
 # ══════════════════════════════════════════════════════════════════════════════
 
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="${ROOT_DIR:-$(cd "${SCRIPT_DIR}/.." && pwd)}"
 export ROOT_DIR
 export DATASETS_DIR="${DATASETS_DIR:-$ROOT_DIR/datasets}"
 
