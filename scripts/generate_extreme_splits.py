@@ -21,10 +21,9 @@ import pandas as pd
 from sklearn.cluster import MiniBatchKMeans
 
 REPO_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-sys.path.insert(0, os.path.join(REPO_DIR, 'scripts', 'proxy_budget'))
-
-from proxy_lib import load_fold, _quotas, typicality
-from diffusion_rank_is import compute_diffusion_weights
+sys.path.insert(0, os.path.join(REPO_DIR, 'unsupervised-is'))
+from scripts.run_generateSplit import get_selector
+from proxy_lib import load_fold, _quotas
 
 BASE_OUT = os.path.join(REPO_DIR, 'results', 'exp-extreme-rates')
 DIAG_ROOT = os.path.join(REPO_DIR, 'results', 'diag-aggressive-rates', 'diag')
@@ -55,8 +54,6 @@ def get_sae_clean_idx(dataset, fold, n_keep, seed):
             keep.append(idx)
             continue
         c_scores = scores[idx]
-        # Clean mode: lower reconstruction error -> higher probability to keep
-        # i.e. sort ascending by error or use weights
         keep.append(idx[np.argsort(c_scores)[:q[c]]])
     return np.sort(np.concatenate(keep))
 
@@ -70,46 +67,19 @@ def process_single_fold(dataset, fold, rate, m, orig_splits):
     n_samples = len(orig_tr)
     n_keep = max(int(round(n_samples * (1 - rate / 100))), 2)
     
-    if m == 'random':
-        rng = np.random.RandomState(28101994 + fold)
-        idx_local = np.sort(rng.choice(n_samples, size=n_keep, replace=False))
-    elif m == 'typ-cover':
-        X_tr, _, _, _ = load_fold(dataset, fold)
-        typ = typicality(X_tr)
-        K = int(min(500, n_samples // 2))
-        km = MiniBatchKMeans(n_clusters=K, random_state=1000 + fold, n_init=3, batch_size=4096)
-        labels = km.fit_predict(X_tr)
-        sizes = np.bincount(labels, minlength=K)
-        q = _quotas(sizes, 0.5, n_keep)
-        keep = []
-        for c in range(K):
-            c_idx = np.where(labels == c)[0]
-            if len(c_idx) == 0 or q[c] == 0:
-                continue
-            keep.append(c_idx[np.argsort(-typ[c_idx])[:q[c]]])
-        idx_local = np.sort(np.concatenate(keep))
-    elif m == 'diff-cover':
-        X_tr, _, _, _ = load_fold(dataset, fold)
-        pi = compute_diffusion_weights(X_tr, k=25)
-        K = int(min(500, n_samples // 2))
-        km = MiniBatchKMeans(n_clusters=K, random_state=1000 + fold, n_init=3, batch_size=4096)
-        labels = km.fit_predict(X_tr)
-        sizes = np.bincount(labels, minlength=K)
-        q = _quotas(sizes, 0.5, n_keep)
-        keep = []
-        for c in range(K):
-            c_idx = np.where(labels == c)[0]
-            if len(c_idx) == 0 or q[c] == 0:
-                continue
-            keep.append(c_idx[np.argsort(-pi[c_idx])[:q[c]]])
-        idx_local = np.sort(np.concatenate(keep))
-    elif m == 'sae-clean':
+    if m == 'sae-clean':
         idx_local = get_sae_clean_idx(dataset, fold, n_keep, seed=2000 + fold)
     else:
-        raise ValueError(m)
+        method_name = f'{m}-rate-{rate}'
+        selector = get_selector(method_name)
+        if selector is None:
+            raise ValueError(f"Unknown selector method: {method_name}")
+        X_tr, y_tr, _, _ = load_fold(dataset, fold)
+        selector.fit(X_tr, y_tr)
+        idx_local = selector.sample_indices_
         
     global_tr = np.array(orig_tr)[idx_local].tolist()
-    return fold, global_tr, orig_te, idx_local.tolist()
+    return fold, global_tr, orig_te, list(idx_local)
 
 
 def generate_splits(dataset, rate=98, methods=None):
