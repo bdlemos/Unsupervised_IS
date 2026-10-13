@@ -91,6 +91,17 @@ def rewrite_combo_data_override(argv):
                 ])
                 matched = True
 
+            # Generic fallback: any dataset_method where dataset is a known dataset
+            if not matched and "_" in value:
+                parts = value.split("_", 1)
+                if parts[0] in {"20ng", "acm", "books", "dblp", "webkb", "sst1", "mpqa", "reuters90", "ohsumed", "twitter", "yelp_reviews", "sst2"}:
+                    rewritten.extend([
+                        "data=template",
+                        f"data.dataset_name={parts[0]}",
+                        f"data.is_method={parts[1]}",
+                    ])
+                    matched = True
+
             if not matched:
                 rewritten.append(arg)
             continue
