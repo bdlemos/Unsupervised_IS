@@ -15,9 +15,7 @@ Pipeline completo de seleção de instâncias não-supervisionada (`unsupervised
 │   ├── run_pipeline.sh                 #   Orquestrador principal (5 steps)
 │   ├── run_sensitivity.sh              #   Exp 3: Sensitivity analysis do ESAE-IS
 │   ├── run_fixed_rates.sh              #   Exp 4: SAE-IS at fixed reduction rates
-│   ├── run_aggressive_rates.sh         #   Exp agressivo: taxas 40% e 60%
-│   ├── run_extreme_rates.sh            #   Exp extremo: taxas 98% e 99%
-│   └── run_extreme_overnight.sh        #   Runner overnight de taxas extremas
+│   └── run_aggressive_rates.sh         #   Exp agressivo: taxas 40% e 60%
 ├── unsupervised-is/                    # Projeto de seleção de instâncias (ver README próprio)
 │   ├── scripts/run_generateSplit.py    #   Entry-point da seleção (registry de métodos)
 │   └── src/main/python/iSel/          #   Implementação dos métodos de IS

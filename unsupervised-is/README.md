@@ -22,11 +22,8 @@ unsupervised-is/
 │   │   ├── cnn.py                  # Condensed Nearest Neighbor
 │   │   ├── lssm.py                 # Local Set-based Smoother
 │   │   ├── lsbo.py                 # Local Set Border Selector
-│   │   └── ...                     # Outros baselines (biois, gmm, perplexity, etc.)
+│   │   └── ...                     # Outros baselines (biois, random, ablações, cluster-random)
 │   └── utils/                      # Helpers (arguments, data loading, etc.)
-├── analysis/                       # Scripts de análise (Exp 1, Exp 5)
-│   ├── exp1_reconstruction_analysis.py
-│   └── exp5_entropy_vs_empirical.py
 └── LICENSE.md
 ```
 
