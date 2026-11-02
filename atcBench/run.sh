@@ -62,6 +62,7 @@ fi
 export PYTHONPATH="${PYTHONPATH:-}:$ROOT_DIR"
 export TB_CONFIG_NAME="config_default.yaml"
 export PYTHON_BIN
+export ROOT_DIR
 
 # DICA: Para melhor balanceamento de carga, ordene os datasets do MAIOR para o MENOR.
 # Assim, os mais pesados começam primeiro e os menores preenchem o tempo no final.
@@ -78,10 +79,12 @@ done
 printf "%s\n" "${combos[@]}" | xargs -n 1 -P "$NUM_PROCESSES" -I {} bash -c '
   IFS="|" read -r dataset method <<< "{}"
   combo="${dataset}_${method}"
-  log_dir="${RESULTS_DIR:-$ROOT_DIR/../results}/classificacao/logs_modernbert/${dataset}"
+  results_dir="${RESULTS_DIR:-$ROOT_DIR/../results}"
+  out_dir="$results_dir/classificacao/output/modernbert/${combo}"
+  log_dir="$results_dir/classificacao/logs_modernbert/${dataset}"
   mkdir -p "$log_dir"
   log_file="$log_dir/${method}.log"
-  
+
   expected_folds=10
   if [ "$dataset" = "agnews" ]; then
     expected_folds=5
@@ -92,10 +95,11 @@ printf "%s\n" "${combos[@]}" | xargs -n 1 -P "$NUM_PROCESSES" -I {} bash -c '
   fi
 
   echo "[RUN] Iniciando $combo (Acompanhe os detalhes em $log_file)"
-  
-  # Redireciona o stdout e stderr deste script especifico para o arquivo de log dele
-  "$PYTHON_BIN" main.py "data=$combo" > "$log_file" 2>&1
-  
+
+  # Appends, so the log of an interrupted earlier attempt is kept
+  echo "===== $(date -Is) $combo =====" >> "$log_file"
+  "$PYTHON_BIN" main.py "data=$combo" >> "$log_file" 2>&1
+
   echo "[DONE] Finalizado $combo"
 '
 

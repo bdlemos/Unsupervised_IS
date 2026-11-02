@@ -77,6 +77,13 @@ FAILED_METHODS_FILE="$out/logs/failed_methods.txt"
 for dataset in "${datasets[@]}"; do
     echo "Dataset: $dataset"
     for method in "${methods[@]}"; do
+        if [[ -f "$out/selection/${dataset}/split_10_${method}.pkl" && -f "$out/selection/${dataset}/split_10_${method}_params.json" ]]; then
+            echo "  [SKIP] $dataset / $method already selected"
+            continue
+        fi
+        if [[ -f "$out/logs/${dataset}_${method}.log" ]]; then
+            mv "$out/logs/${dataset}_${method}.log" "$out/logs/${dataset}_${method}.$(date +%Y%m%dT%H%M%S).log"
+        fi
         echo "  Iniciando $dataset e $method (Log: $out/logs/${dataset}_${method}.log)"
 
         set +e
