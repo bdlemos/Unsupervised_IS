@@ -1,5 +1,5 @@
 
-from src.main.python.utils.general import str2bool
+from src.utils.general import str2bool
 from datetime import datetime
 import argparse
 import os

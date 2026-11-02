@@ -1,6 +1,6 @@
-from src.main.python.utils.general import get_data, get_splits, checkpoint_splits, translate_train_idxinfold
-from src.main.python.utils.arguments import arguments
-from src.main.python.utils.save_results import save_results, save_selection_params
+from src.utils.general import get_data, get_splits, checkpoint_splits, translate_train_idxinfold
+from src.utils.arguments import arguments
+from src.utils.save_results import save_results, save_selection_params
 import argparse
 from datetime import datetime
 import time
@@ -10,12 +10,12 @@ import io
 import os
 import pandas as pd
 from collections import Counter
-from src.main.python.iSel import biois, autoencoder_is
-from src.main.python.iSel import random_is, no_is, sublinear_ae_is
-from src.main.python.iSel import entropy_sublinear_ae_is
-from src.main.python.iSel import ablation_methods
-from src.main.python.iSel import e2sc, cnn, lssm, lsbo
-from src.main.python.iSel import cluster_random_is
+from src.iSel import biois, autoencoder_is
+from src.iSel import random_is, no_is, sublinear_ae_is
+from src.iSel import entropy_sublinear_ae_is
+from src.iSel import ablation_methods
+from src.iSel import e2sc, cnn, lssm, lsbo
+from src.iSel import cluster_random_is
 
 import socket
 

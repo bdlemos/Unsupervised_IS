@@ -3,7 +3,7 @@ No instance selection baseline
 
 Selects all training instances (no selection).
 """
-from src.main.python.iSel.base import InstanceSelectionMixin
+from src.iSel.base import InstanceSelectionMixin
 import numpy as np
 from sklearn.utils.validation import check_X_y
 

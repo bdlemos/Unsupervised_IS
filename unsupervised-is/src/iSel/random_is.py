@@ -3,7 +3,7 @@ Random instance selection baseline
 
 Selects a random subset of training indices according to `selection_rate`.
 """
-from src.main.python.iSel.base import InstanceSelectionMixin
+from src.iSel.base import InstanceSelectionMixin
 import numpy as np
 import random
 from sklearn.utils.validation import check_X_y

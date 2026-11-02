@@ -11,7 +11,7 @@ unsupervised-is/
 │   └── read_selection_ci.py        # Gera sumário com intervalos de confiança
 ├── bash/
 │   └── run_unsupervised_selection.sh  # Orquestrador de seleção (loop dataset × method)
-├── src/main/python/
+├── src/
 │   ├── iSel/                       # Implementação dos métodos de IS
 │   │   ├── base.py                 # InstanceSelectionMixin (classe base)
 │   │   ├── entropy_sublinear_ae_is.py  # ESAE-IS (método principal)

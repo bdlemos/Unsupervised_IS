@@ -24,5 +24,5 @@ except ImportError:
 @pytest.fixture
 def fake_ae(monkeypatch):
     """Replace autoencoder training with a deterministic score (no torch training in tests)."""
-    from src.main.python.iSel import autoencoder_is
+    from src.iSel import autoencoder_is
     monkeypatch.setattr(autoencoder_is.AutoencoderIS, "fit", fake_ae_fit)

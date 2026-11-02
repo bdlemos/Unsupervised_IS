@@ -10,10 +10,10 @@ from sklearn.metrics import f1_score
 from collections import Counter
 from scipy import stats
 
-from src.main.python.weakClassifiers.nmslibKNN import NMSlibKNNClassifier
-from src.main.python.weakClassifiers.exactKNN import generateExactKNN
-from src.main.python.iSel.e2sc_helpers import getCVSplit, print_stats, getCVSplitOnIteration
-from src.main.python.iSel.base import InstanceSelectionMixin
+from src.weakClassifiers.nmslibKNN import NMSlibKNNClassifier
+from src.weakClassifiers.exactKNN import generateExactKNN
+from src.iSel.e2sc_helpers import getCVSplit, print_stats, getCVSplitOnIteration
+from src.iSel.base import InstanceSelectionMixin
 
 
 class E2SC(InstanceSelectionMixin):
@@ -97,7 +97,7 @@ class E2SC(InstanceSelectionMixin):
 
     >>> from collections import Counter
     >>> from sklearn.datasets import make_classification
-    >>> from src.main.python.iSel import e2sc
+    >>> from src.iSel import e2sc
     >>> X, y = make_classification(n_classes=2, class_sep=2,
     ... weights=[0.1, 0.9], n_informative=3, n_redundant=1, flip_y=0,
     ... n_features=20, n_clusters_per_class=1, n_samples=1000, random_state=10)

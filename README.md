@@ -18,7 +18,7 @@ Pipeline completo de seleção de instâncias não-supervisionada (`unsupervised
 │   └── run_aggressive_rates.sh         #   Exp agressivo: taxas 40% e 60%
 ├── unsupervised-is/                    # Projeto de seleção de instâncias (ver README próprio)
 │   ├── scripts/run_generateSplit.py    #   Entry-point da seleção (registry de métodos)
-│   └── src/main/python/iSel/          #   Implementação dos métodos de IS
+│   └── src/iSel/          #   Implementação dos métodos de IS
 ├── atcBench/                           # Projeto de benchmark de classificação (ver README próprio)
 │   ├── main.py                        #   Entry-point (Hydra config)
 │   └── run.sh                         #   Executa classificação com xargs pool

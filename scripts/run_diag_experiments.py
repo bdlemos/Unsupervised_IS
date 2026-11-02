@@ -26,10 +26,10 @@ UNSUP_DIR = os.path.join(REPO_DIR, 'unsupervised-is')
 if UNSUP_DIR not in sys.path:
     sys.path.insert(0, UNSUP_DIR)
 
-from src.main.python.utils.general import get_data, get_splits, checkpoint_splits, translate_train_idxinfold
-from src.main.python.iSel.autoencoder_is import AutoencoderIS
-from src.main.python.iSel.sublinear_ae_is import _find_lambda
-from src.main.python.iSel.random_is import RandomIS
+from src.utils.general import get_data, get_splits, checkpoint_splits, translate_train_idxinfold
+from src.iSel.autoencoder_is import AutoencoderIS
+from src.iSel.esae_core import find_lambda as _find_lambda
+from src.iSel.random_is import RandomIS
 
 
 def run_diagnostics():

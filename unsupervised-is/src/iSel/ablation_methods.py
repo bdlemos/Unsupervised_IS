@@ -20,9 +20,9 @@ from __future__ import annotations
 import numpy as np
 from sklearn.utils.validation import check_X_y
 
-from src.main.python.iSel import esae_core
-from src.main.python.iSel.base import InstanceSelectionMixin
-from src.main.python.iSel.autoencoder_is import AutoencoderIS
+from src.iSel import esae_core
+from src.iSel.base import InstanceSelectionMixin
+from src.iSel.autoencoder_is import AutoencoderIS
 
 
 def _compute_esae_adaptive_rate(X, r_max: float, alpha: float, random_state: int) -> dict:

@@ -14,8 +14,8 @@ from sklearn.cluster import MiniBatchKMeans
 from sklearn.preprocessing import normalize
 from sklearn.utils.validation import check_X_y
 
-from src.main.python.iSel.base import InstanceSelectionMixin
-from src.main.python.iSel.esae_core import cell_summary
+from src.iSel.base import InstanceSelectionMixin
+from src.iSel.esae_core import cell_summary
 
 
 def _find_lambda(sizes: np.ndarray, gamma: float, target_keep: int) -> float:

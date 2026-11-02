@@ -2,7 +2,7 @@
 CNN
 """
 
-from src.main.python.iSel.base import InstanceSelectionMixin
+from src.iSel.base import InstanceSelectionMixin
 import numpy as np
 import random
 from sklearn.utils.validation import check_X_y

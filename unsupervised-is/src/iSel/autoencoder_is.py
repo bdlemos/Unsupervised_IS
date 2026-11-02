@@ -46,7 +46,7 @@ from sklearn.utils.validation import check_X_y
 from sklearn.preprocessing import StandardScaler
 import scipy
 
-from src.main.python.iSel.base import InstanceSelectionMixin
+from src.iSel.base import InstanceSelectionMixin
 
 
 # ======================================================================
@@ -224,7 +224,7 @@ class AutoencoderIS(InstanceSelectionMixin):
     =======
 
     >>> import numpy as np
-    >>> from src.main.python.iSel.autoencoder_is import AutoencoderIS
+    >>> from src.iSel.autoencoder_is import AutoencoderIS
     >>> X = np.random.rand(500, 50)
     >>> y = np.zeros(500)  # labels not used for selection
     >>> selector = AutoencoderIS(bottleneck_ratio=0.3,

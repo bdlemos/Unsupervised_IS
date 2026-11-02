@@ -5,10 +5,10 @@ import numpy as np
 import pytest
 
 from synthetic import make_blobs, fake_reconstruction_errors
-from src.main.python.iSel import esae_core, ablation_methods
-from src.main.python.iSel.entropy_sublinear_ae_is import EntropySublinearAEIS
-from src.main.python.iSel.sublinear_ae_is import SublinearAEIS
-from src.main.python.utils.save_results import to_jsonable
+from src.iSel import esae_core, ablation_methods
+from src.iSel.entropy_sublinear_ae_is import EntropySublinearAEIS
+from src.iSel.sublinear_ae_is import SublinearAEIS
+from src.utils.save_results import to_jsonable
 
 GOLDEN = os.path.join(os.path.dirname(__file__), "data", "esae_golden.json")
 

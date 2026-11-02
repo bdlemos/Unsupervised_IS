@@ -3,15 +3,15 @@
 LSBo
 """
 
-from src.main.python.iSel.base import InstanceSelectionMixin
+from src.iSel.base import InstanceSelectionMixin
 import numpy as np
 import random
 from sklearn.utils.validation import check_X_y
 from sklearn.neighbors import KNeighborsClassifier
 
-from src.main.python.iSel.lssm import LSSm
+from src.iSel.lssm import LSSm
 
-from src.main.python.utils.general import get_splits
+from src.utils.general import get_splits
 from sklearn.metrics.pairwise import euclidean_distances
 
 from collections import Counter

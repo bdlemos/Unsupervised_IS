@@ -63,9 +63,9 @@ import time
 import numpy as np
 from sklearn.utils.validation import check_X_y
 
-from src.main.python.iSel import esae_core
-from src.main.python.iSel.base import InstanceSelectionMixin
-from src.main.python.iSel.autoencoder_is import AutoencoderIS
+from src.iSel import esae_core
+from src.iSel.base import InstanceSelectionMixin
+from src.iSel.autoencoder_is import AutoencoderIS
 
 
 class SublinearAEIS(InstanceSelectionMixin):

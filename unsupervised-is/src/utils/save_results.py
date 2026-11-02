@@ -1,4 +1,4 @@
-from src.main.python.utils.general import print_in_file
+from src.utils.general import print_in_file
 import numpy as np
 import os
 import socket
