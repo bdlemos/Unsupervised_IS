@@ -15,7 +15,7 @@ from src.iSel import random_is, no_is, sublinear_ae_is
 from src.iSel import entropy_sublinear_ae_is
 from src.iSel import ablation_methods
 from src.iSel import e2sc, cnn, lssm, lsbo
-from src.iSel import cluster_random_is
+from src.iSel import cluster_random_is, factorial_is
 
 import socket
 
@@ -153,6 +153,17 @@ def get_selector(method: str, args=None):
 
         # n_clusters=-1 means sqrt(N), the ESAE default
         return entropy_sublinear_ae_is.EntropySublinearAEIS(**params)
+
+    # ── Rate x selection factorial (Marcos) ────────────────────────────
+    # Method names: fx-<rate>-<selection>, rate = entropy | r<percent> (r20, r21.3),
+    # selection = re | cells | global. E.g. fx-entropy-cells, fx-r20-global.
+    if method.startswith('fx-'):
+        import re
+        m = re.fullmatch(r'fx-(entropy|r(\d+(?:\.\d+)?))-(re|cells|global)', method)
+        if m is None:
+            return None
+        rate = 'entropy' if m.group(1) == 'entropy' else float(m.group(2)) / 100.0
+        return factorial_is.FactorialIS(rate=rate, selection=m.group(3), random_state=13)
 
     # ── Cluster-Random IS ──────────────────────────────────────────────
     if method.startswith(('cluster-random-', 'cluster-random_')):

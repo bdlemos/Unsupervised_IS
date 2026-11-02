@@ -4,6 +4,7 @@ from datetime import datetime
 import argparse
 import os
 import random
+import re
 
 
 def check_if_split_exists(args):
@@ -39,6 +40,13 @@ def arguments():
                              "from (seed, fold), and tags outputs as <method>-seed<seed>")
 
     args = parser.parse_args()
+
+    # A "-seedN" suffix in the method name is the same as --seed N (lets pipelines pass repetitions as methods)
+    m = re.fullmatch(r"(.+)-seed(\d+)", args.method)
+    if m:
+        if args.seed is not None and args.seed != int(m.group(2)):
+            parser.error(f"--seed {args.seed} contradicts method name {args.method}")
+        args.method, args.seed = m.group(1), int(m.group(2))
 
     # args.inputdir=f'datasets/{args.dataset}/tfidf/'
     args.inputdir = f'{args.datain}/{args.dataset}/{args.inputrep}/'

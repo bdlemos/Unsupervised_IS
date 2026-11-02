@@ -82,6 +82,18 @@ def test_seed_gives_independent_reproducible_repetitions(fake_ae, dataset, monke
     assert params["seed"] == 2 and len(set(states)) == FOLDS and 13 not in states
 
 
+def test_seed_suffix_in_method_name_equals_seed_flag(fake_ae, dataset, monkeypatch):
+    outdir = run(monkeypatch, dataset, "fx-r20-cells", "--seed", "4")
+    by_flag = load_split(outdir, "fx-r20-cells-seed4")
+    (outdir / f"split_{FOLDS}_fx-r20-cells-seed4.pkl").unlink()
+    run(monkeypatch, dataset, "fx-r20-cells-seed4")
+    by_name = load_split(outdir, "fx-r20-cells-seed4")
+    for f in range(FOLDS):
+        assert list(by_flag.loc[f].train_idxs) == list(by_name.loc[f].train_idxs)
+    params = json.load(open(outdir / f"split_{FOLDS}_fx-r20-cells-seed4_params.json"))
+    assert params["method"] == "fx-r20-cells" and params["seed"] == 4
+
+
 def test_unknown_method_fails_loudly(fake_ae, dataset, monkeypatch):
     with pytest.raises(ValueError, match="Unknown selection method"):
         run(monkeypatch, dataset, "no-such-method")
