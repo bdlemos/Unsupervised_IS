@@ -241,5 +241,10 @@ class BIOIS(InstanceSelectionMixin):
 
         self.sample_indices_ = np.asarray(range(len(y)))[self.mask]
         self.reduction_ = 1.0 - float(len(self.y_))/len_original_y
+        self.selection_info_ = {
+            "fitted_alpha": alpha,
+            "n_removed_redundant": int(len(idx_choice_to_remove)),
+            "n_removed_noise": int(len(noiseIdxToRemove)),
+        }
 
         return self.X_, self.y_

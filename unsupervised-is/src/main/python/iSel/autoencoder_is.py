@@ -554,6 +554,15 @@ class AutoencoderIS(InstanceSelectionMixin):
 
         self.sample_indices_ = np.asarray(range(len(y)))[self.mask]
         self.reduction_ = 1.0 - float(len(self.y_)) / len_original_y
+        self.selection_info_ = {
+            "low_threshold": getattr(self, "low_threshold_", None),
+            "high_threshold": getattr(self, "high_threshold_", None),
+            "n_removed_redundant": int(len(idx_redundant)),
+            "n_removed_noise": int(len(idx_noise)),
+            "re_min": float(np.min(errors)),
+            "re_median": float(np.median(errors)),
+            "re_max": float(np.max(errors)),
+        }
 
         print(f"[AE-IS] Removed {len(idx_redundant)} redundant + "
               f"{len(idx_noise)} noisy = "

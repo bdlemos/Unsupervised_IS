@@ -49,36 +49,23 @@ gamma : float, default=0.5
 ae_epochs : int, default=50
     Number of epochs to train the autoencoder.
 random_state : int, default=0
+mode : {"original", "cleaning"}, default="original"
+    "original" removes low-error instances first (as described above);
+    "cleaning" removes high-error instances first.
+beta : float, default=1.0
+    Exponent applied to the removal weights.
 """
 
 from __future__ import annotations
 
+import time
+
 import numpy as np
-import scipy
-from sklearn.cluster import MiniBatchKMeans
 from sklearn.utils.validation import check_X_y
 
+from src.main.python.iSel import esae_core
 from src.main.python.iSel.base import InstanceSelectionMixin
 from src.main.python.iSel.autoencoder_is import AutoencoderIS
-
-
-def _find_lambda(sizes: np.ndarray, gamma: float, target_keep_count: int) -> float:
-    """Find the scaling factor lambda to match the target keep count."""
-    low = 0.0
-    high = float(target_keep_count)
-    best_lam = high
-
-    for _ in range(50):
-        mid = (low + high) / 2.0
-        kept = sum(min(s, int(np.ceil(mid * (s ** gamma)))) for s in sizes)
-
-        if kept >= target_keep_count:
-            best_lam = mid
-            high = mid
-        else:
-            low = mid
-
-    return best_lam
 
 
 class SublinearAEIS(InstanceSelectionMixin):
@@ -104,24 +91,7 @@ class SublinearAEIS(InstanceSelectionMixin):
         self.ae_kwargs = ae_kwargs
         self.sample_indices_ = []
 
-    def _to_dense(self, X):
-        if scipy.sparse.issparse(X):
-            return X.toarray()
-        return np.asarray(X, dtype=np.float64)
-
-    def select_data(self, X, y):
-        X = self._to_dense(X)
-        X, y = check_X_y(X, y, accept_sparse=False)
-        n_samples = len(y)
-
-        target_keep_count = int(n_samples * (1.0 - self.target_reduction))
-        print(f"[SublinearAEIS] Target reduction: {self.target_reduction:.2%} "
-              f"(Keeping {target_keep_count} / {n_samples} instances)")
-
-        # ------------------------------------------------------------------
-        # Step 1: Autoencoder Scoring
-        # ------------------------------------------------------------------
-        print(f"[SublinearAEIS] Step 1 — Training Autoencoder for {self.ae_epochs} epochs...")
+    def _reconstruction_errors(self, X, y) -> np.ndarray:
         ae = AutoencoderIS(
             n_epochs=self.ae_epochs,
             low_percentile=0.0,   # We won't use the built-in removal
@@ -131,91 +101,57 @@ class SublinearAEIS(InstanceSelectionMixin):
             random_state=self.random_state,
             **self.ae_kwargs
         )
-        # Train AE and extract scores
         ae.fit(X, y)
-        scores = ae.reconstruction_errors_
-        self.scores_ = scores
+        return ae.reconstruction_errors_
 
+    def select_data(self, X, y):
+        X = esae_core.to_dense(X)
+        X, y = check_X_y(X, y, accept_sparse=False)
+        n_samples = len(y)
+
+        target_keep_count = int(n_samples * (1.0 - self.target_reduction))
+        print(f"[SublinearAEIS] Target reduction: {self.target_reduction:.2%} "
+              f"(Keeping {target_keep_count} / {n_samples} instances)")
+
+        # Step 1: autoencoder scoring
+        print(f"[SublinearAEIS] Step 1 — Training Autoencoder for {self.ae_epochs} epochs...")
+        t0 = time.time()
+        scores = self._reconstruction_errors(X, y)
+        self.scores_ = scores
+        t_ae = time.time() - t0
         print(f"[SublinearAEIS] Autoencoder scores: min={scores.min():.4f}, "
               f"median={np.median(scores):.4f}, max={scores.max():.4f}")
 
-        # ------------------------------------------------------------------
-        # Step 2: Micro-clustering (Tessellation)
-        # ------------------------------------------------------------------
-        if self.n_clusters is not None and self.n_clusters > 0 and self.n_clusters < 99999:
-            n_clusters = max(2, min(self.n_clusters, n_samples // 10))
-        else:
-            n_clusters = int(np.sqrt(n_samples))
-
+        # Step 2: tessellation
+        n_clusters = esae_core.resolve_n_clusters(self.n_clusters, n_samples, max_divisor=10)
         print(f"[SublinearAEIS] Step 2 — Tessellating space into {n_clusters} micro-clusters...")
-        km = MiniBatchKMeans(n_clusters=n_clusters, random_state=self.random_state, n_init=3)
-        labels = km.fit_predict(X)
-
-        sizes = np.bincount(labels, minlength=n_clusters)
+        t0 = time.time()
+        labels, sizes = esae_core.tessellate(X, n_clusters, self.random_state)
         self.labels_ = labels
         self.cluster_sizes_ = sizes
+        t_tess = time.time() - t0
 
-        # ------------------------------------------------------------------
-        # Step 3: Sublinear Target Distribution
-        # ------------------------------------------------------------------
-        lam = _find_lambda(sizes, self.gamma, target_keep_count)
+        # Step 3: sublinear quotas; step 4: score-weighted removal inside each cell
+        t0 = time.time()
+        lam, quotas = esae_core.sublinear_quotas(sizes, self.gamma, target_keep_count)
+        self.cluster_quotas_ = quotas
         print(f"[SublinearAEIS] Step 3 — Sublinear sampling (gamma={self.gamma}). lambda = {lam:.4f}")
+        weights = esae_core.removal_weights(scores, self.mode, self.beta)
+        mask = esae_core.remove_within_cells(labels, quotas, np.random.RandomState(self.random_state), weights)
+        t_sample = time.time() - t0
 
-        # ------------------------------------------------------------------
-        # Step 4: Redundancy removal via AE Scores
-        # ------------------------------------------------------------------
-        mask = np.ones(n_samples, dtype=bool)
-        cluster_quotas = np.array([min(s, int(np.ceil(lam * (s ** self.gamma)))) for s in sizes])
-        self.cluster_quotas_ = cluster_quotas
-
-        for c in range(n_clusters):
-            cluster_idx = np.where(labels == c)[0]
-            s_c = len(cluster_idx)
-
-            if s_c == 0:
-                continue
-
-            keep_count = cluster_quotas[c]
-            remove_count = s_c - keep_count
-
-            if remove_count > 0:
-                c_scores = scores[cluster_idx]
-
-                if self.mode == "cleaning":
-                    # Direct scores: higher error → higher removal probability
-                    weights = (c_scores + 1e-8) ** self.beta
-                    p_remove = weights / np.sum(weights)
-                else:
-                    # Inverse scores: low error → high removal probability
-                    inv_scores = 1.0 / (c_scores + 1e-8)
-                    weights = inv_scores ** self.beta
-                    p_remove = weights / np.sum(weights)
-
-                # Sample the instances to remove probabilistically without replacement
-                to_remove_local = np.random.choice(
-                    len(cluster_idx),
-                    size=remove_count,
-                    replace=False,
-                    p=p_remove
-                )
-
-                to_remove = cluster_idx[to_remove_local]
-                mask[to_remove] = False
-
-        # ------------------------------------------------------------------
-        # Build outputs
-        # ------------------------------------------------------------------
-        self.mask = mask
-        self.X_ = np.asarray(X[self.mask])
-        self.y_ = np.asarray(y[self.mask])
-        self.sample_indices_ = np.where(self.mask)[0]
-        self.reduction_ = 1.0 - float(len(self.y_)) / n_samples
-
-        # Compatibility attributes
-        self.beta = self.target_reduction
-        self.theta = 0.0
-        self.low_percentile = 0.0
-        self.high_percentile = 100.0
+        self._set_selection(
+            X, y, mask,
+            n_clusters=n_clusters,
+            target_reduction=self.target_reduction,
+            target_keep_count=target_keep_count,
+            sublinear_lambda=lam,
+            **esae_core.cell_summary(sizes, quotas),
+            **esae_core.score_summary(scores),
+            time_autoencoder=t_ae,
+            time_tessellation=t_tess,
+            time_sampling=t_sample,
+        )
 
         print(f"[SublinearAEIS] Done — removed {n_samples - len(self.y_)} / {n_samples} "
               f"(reduction = {self.reduction_:.2%})")

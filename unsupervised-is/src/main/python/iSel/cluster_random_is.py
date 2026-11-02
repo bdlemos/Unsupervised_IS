@@ -15,6 +15,7 @@ from sklearn.preprocessing import normalize
 from sklearn.utils.validation import check_X_y
 
 from src.main.python.iSel.base import InstanceSelectionMixin
+from src.main.python.iSel.esae_core import cell_summary
 
 
 def _find_lambda(sizes: np.ndarray, gamma: float, target_keep: int) -> float:
@@ -144,5 +145,10 @@ class ClusterRandomIS(InstanceSelectionMixin):
         self.reduction_ = 1.0 - float(len(keep_indices)) / n_samples
         self.X_ = X[keep_indices]
         self.y_ = y[keep_indices]
+        self.selection_info_ = {
+            "n_clusters": int(K),
+            "target_keep_count": int(target_keep),
+            **cell_summary(sizes, quotas),
+        }
 
         return self.X_, self.y_
