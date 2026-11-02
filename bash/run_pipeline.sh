@@ -3,7 +3,7 @@
 # nohup ./bash/run_pipeline.sh > pipeline_geral.log 2>&1 &
 # Usage examples:
 #   ./bash/run_pipeline.sh
-#   ./bash/run_pipeline.sh --methods "adaptive-perplexity,adaptive-v2-perplexity" --datasets "mpqa,sst2"
+#   ./bash/run_pipeline.sh --methods "entropy-sublinear-ae-is,no-is" --datasets "mpqa,sst2"
 #   ./bash/run_pipeline.sh --steps "1,2,3"
 #   ./bash/run_pipeline.sh --steps "selection,benchmark"
 
@@ -18,7 +18,7 @@ else
 fi
 
 # ── Default values ────────────────────────────────────────────────────────────
-DEFAULT_METHODS="no-is,biois,perplexity-is,autoencoder-is,gmm-is,adaptive-perplexity,adaptive-v2-perplexity"
+DEFAULT_METHODS="no-is,biois,autoencoder-is,sublinear-ae-is,entropy-sublinear-ae-is"
 
 # Discover datasets automatically and sort them by the size of their texts.txt
 export DATASETS_DIR="${DATASETS_DIR:-$ROOT_DIR/datasets}"

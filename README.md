@@ -161,12 +161,8 @@ Os steps podem ser executados seletivamente com `--steps "4,5"` (útil para rege
 | `no-is` | Sem seleção (full dataset) |
 | `biois` | Baseline IS |
 | `random-is` | Remoção aleatória (50%) |
-| `perplexity-is` | Baseado em perplexidade LDA |
+| `random-rate-<N>` | Remoção aleatória global a N% |
 | `autoencoder-is` | AE com thresholds fixos |
-| `gmm-is` | Gaussian Mixture Model |
-| `adaptive-perplexity` | Adaptive IS (imbalance-aware) |
-| `adaptive-v2-perplexity` | Adaptive V2 (quartile-density) |
-| `adaptive-cluster-is` | Adaptive com clustering |
 
 ### Baselines Supervisionados
 | Método | Descrição |
@@ -175,6 +171,20 @@ Os steps podem ser executados seletivamente com `--steps "4,5"` (útil para rege
 | `cnn-is` | Condensed Nearest Neighbor |
 | `lssm-is` | Local Set-based Smoother |
 | `lsbo-is` | Local Set Border Selector |
+
+### Fatorial taxa × seleção (feedback do Marcos)
+Nome: `fx-<taxa>-<seleção>[-seed<N>]`, classe `FactorialIS` (`unsupervised-is/src/iSel/factorial_is.py`).
+
+| Fator | Níveis |
+|---|---|
+| taxa | `entropy` (regra do ESAE), `r<pct>` fixa para todos os datasets (`r20`, `r21.3` = média do ESAE nos 19 datasets) |
+| seleção | `re` (cotas sublineares, remoção ponderada por 1/RE = ESAE), `cells` (mesmas cotas, uniforme na célula = ESAE sem AE), `global` (uniforme, sem células) |
+
+`fx-entropy-re` ≡ `entropy-sublinear-ae-is`, `fx-entropy-cells` ≡ `ablation-cluster-sublinear-random` e
+`fx-entropy-global` ≡ `ablation-random-esae-rate` (seleções idênticas, testado). O sufixo `-seed<N>` gera
+uma repetição independente; dentro do mesmo seed todas as células compartilham a tesselação.
+Para rodar tudo: `bash bash/run_factorial.sh` (`DRY_RUN=1` mostra o plano). Dentro do Docker, passe
+`-e GIT_COMMIT=$(git rev-parse HEAD)` para o JSON de parâmetros registrar o commit.
 
 ### Ablation Variants (Exp 2)
 | Método | A (AE) | B (Cluster) | C (Sublinear) | Descrição |

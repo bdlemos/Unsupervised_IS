@@ -130,7 +130,7 @@ class E2SC(InstanceSelectionMixin):
         self.betaMode = betaMode
         self.beta = beta
         self.maxreduction = maxreduction
-        self.delta = delta * 100
+        self.delta = delta
         
         self.sample_indices_ = []
 
@@ -226,7 +226,7 @@ class E2SC(InstanceSelectionMixin):
     def iterative_beta(self, X, y, alpha):
 
         # Setting the percents to be analized
-        percents = [round(x, 2) for x in (np.arange(self.delta, 100, self.delta) / 100)]
+        percents = [round(x, 2) for x in (np.arange(self.delta * 100, 100, self.delta * 100) / 100)]
 
         percents = [p for p in percents if (
             (p + 0.01) < self.exactInfo["correctPredictedRate"])] 

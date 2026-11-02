@@ -23,7 +23,7 @@ BASE_RESULTS_DIR="${ROOT_DIR}/results/exp-aggressive-rates"
 RATES="${RATES:-40 60}"
 
 echo "═══════════════════════════════════════════════════════════════════"
-echo "  Aggressive Rates Experiment: SAE-IS vs Random IS vs Softmax SAE"
+echo "  Aggressive Rates Experiment: SAE-IS vs Random IS"
 echo "  Datasets:    ${DATASETS}"
 echo "  Input Rep:   ${INPUT_REP}"
 echo "  Rates:       ${RATES}"
@@ -36,7 +36,7 @@ for rate in ${RATES}; do
     if [[ -n "${METHODS:-}" ]]; then
         RATE_METHODS="${METHODS//\{rate\}/$rate}"
     else
-        RATE_METHODS="sae-softmax-rate-${rate},random-rate-${rate}"
+        RATE_METHODS="sae-rate-${rate},random-rate-${rate}"
     fi
 
     echo ""

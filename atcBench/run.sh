@@ -10,7 +10,7 @@ cd "$ROOT_DIR"
 
 # ── Default values ─────────────────────────────────────────────────────────
 DEFAULT_NUM_PROCESSES=1
-DEFAULT_METHODS="adaptive-v2-perplexity,adaptive-perplexity"
+DEFAULT_METHODS="no-is,biois,autoencoder-is,sublinear-ae-is,entropy-sublinear-ae-is"
 DEFAULT_DATASETS="mpqa,reuters90,sst1,ohsumed,twitter,webkb,yelp_reviews,sst2,dblp,acm"
 
 NUM_PROCESSES=$DEFAULT_NUM_PROCESSES
