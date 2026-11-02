@@ -183,7 +183,7 @@ Nome: `fx-<taxa>-<seleção>[-seed<N>]`, classe `FactorialIS` (`unsupervised-is/
 `fx-entropy-re` ≡ `entropy-sublinear-ae-is`, `fx-entropy-cells` ≡ `ablation-cluster-sublinear-random` e
 `fx-entropy-global` ≡ `ablation-random-esae-rate` (seleções idênticas, testado). O sufixo `-seed<N>` gera
 uma repetição independente; dentro do mesmo seed todas as células compartilham a tesselação.
-Para rodar tudo: `bash bash/run_factorial.sh` (`DRY_RUN=1` mostra o plano). Dentro do Docker, passe
+Para rodar: `bash bash/run_factorial.sh` (`DRY_RUN=1` mostra o plano; o cabeçalho do script explica a escolha dos 9 datasets default). Dentro do Docker, passe
 `-e GIT_COMMIT=$(git rev-parse HEAD)` para o JSON de parâmetros registrar o commit.
 
 ### Ablation Variants (Exp 2)
