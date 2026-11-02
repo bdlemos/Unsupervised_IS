@@ -10,12 +10,12 @@ import io
 import os
 import pandas as pd
 from collections import Counter
-from src.main.python.iSel import perplexity_is, biois, autoencoder_is, iforest_is, gmm_is, cluster_is
-from src.main.python.iSel import random_is, no_is, adaptive_is, adaptive_v2_is, adaptive_cluster_is, sublinear_ae_is, sublinear_softmax_ae_is
+from src.main.python.iSel import biois, autoencoder_is
+from src.main.python.iSel import random_is, no_is, sublinear_ae_is
 from src.main.python.iSel import entropy_sublinear_ae_is
 from src.main.python.iSel import ablation_methods
 from src.main.python.iSel import e2sc, cnn, lssm, lsbo
-from src.main.python.iSel import cluster_random_is, typicality_cover_is, diffusion_cover_is
+from src.main.python.iSel import cluster_random_is
 
 import socket
 
@@ -23,11 +23,6 @@ import logging
 
 logging.basicConfig(level=logging.INFO, format='%(message)s')
 logger = logging.getLogger(__name__)
-
-beta = 0.60
-theta = 0.2
-low_percentile = 40
-high_percentile = 70
 
 def get_selector(method: str, args=None):
 
@@ -37,25 +32,11 @@ def get_selector(method: str, args=None):
     if method == 'random-is': return random_is.RandomIS(selection_rate=0.5, random_state=28101994)
 
     #unsupervised
-    if method == 'perplexity-is': return perplexity_is.PerplexityIS(n_topics=10, low_percentile=low_percentile, high_percentile=high_percentile, beta=beta, theta=theta)
-
     if method == 'autoencoder-is': return autoencoder_is.AutoencoderIS(
                                                                         n_epochs=20, batch_size=64, bottleneck_ratio=0.05,
                                                                         beta=0.50, theta=0.1666666, low_percentile=40, high_percentile=70
                                                                     )
-    if method == 'gmm-is': return gmm_is.GMMIS(low_percentile=low_percentile, high_percentile=high_percentile, beta=beta, theta=theta)
 
-    # Adaptive variants — hyperparameters estimated automatically from the
-    # score distribution (imbalance-aware). Three flavours, one per base scorer.
-    if method == 'adaptive-perplexity': return adaptive_is.AdaptiveIS(base_method='autoencoder')
-
-    # AdaptiveV2 — quartile-density strategy
-    if method == 'adaptive-v2-perplexity': return adaptive_v2_is.AdaptiveV2IS(base_method='autoencoder')
-
-    # Adaptive cluster-based IS — clusters are formed in the original feature space, and then the adaptive strategy is applied within each cluster.
-    if method == 'adaptive-cluster-is': return adaptive_cluster_is.AdaptiveClusterIS(base_method='autoencoder', n_clusters=30)
-
-    # I think it can be my master piece
     if method == 'sublinear-ae-is': return sublinear_ae_is.SublinearAEIS(
         target_reduction=0.25, # target 25% reduction
         n_clusters=-1,         # sqrt(N) micro-clusters
@@ -114,42 +95,6 @@ def get_selector(method: str, args=None):
 
     if method == 'ablation-cluster-uniform-ae':
         return ablation_methods.AblationClusterUniformAE()
-
-    # ── Sublinear Softmax AE IS (Caminho 2: Z-Score intra-cluster + Softmax com tau) ──────
-    # Method names: sae-softmax-rate-40, sae-clean-rate-40, sae-softmax-tau05-rate-40, etc.
-    if method.startswith(('sae-softmax-', 'sae-clean-')):
-        import re
-        mode = 'original' if 'orig' in method else 'cleaning'
-        if args is not None and getattr(args, 'mode', None):
-            mode = args.mode
-        elif os.environ.get('SAE_MODE'):
-            mode = os.environ['SAE_MODE']
-
-        m_tau = re.search(r'tau([0-9._]+)', method)
-        if m_tau:
-            tau_str = m_tau.group(1).replace('_', '.')
-            if tau_str.startswith('0') and not tau_str.startswith('0.') and len(tau_str) > 1:
-                tau_str = '0.' + tau_str[1:]
-            tau_val = float(tau_str)
-        elif args is not None and getattr(args, 'tau', None) is not None:
-            tau_val = args.tau
-        elif os.environ.get('SAE_TAU'):
-            tau_val = float(os.environ['SAE_TAU'])
-        else:
-            tau_val = 1.0
-
-        m_rate = re.search(r'rate[-_]?(\d+)', method)
-        rate = int(m_rate.group(1)) / 100.0 if m_rate else 0.30
-
-        return sublinear_softmax_ae_is.SublinearSoftmaxAEIS(
-            target_reduction=rate,
-            n_clusters=-1,
-            gamma=0.5,
-            ae_epochs=50,
-            random_state=13,
-            mode=mode,
-            tau=tau_val
-        )
 
     # ── SAE-IS at fixed rates (Exp 4 & Diag) ──────────────────────────────
     # Method names: sae-rate-10, sae-rate-40, sae-cleaning-rate-40, sae-beta10-rate-40, etc.
@@ -232,32 +177,6 @@ def get_selector(method: str, args=None):
         m_gamma = re.search(r'gamma[-_]?([0-9.]+)', method)
         gamma = float(m_gamma.group(1)) if m_gamma else 0.5
         return cluster_random_is.ClusterRandomIS(
-            target_reduction=rate,
-            gamma=gamma,
-            random_state=42
-        )
-
-    # ── Typicality-Cover IS ─────────────────────────────────────────────
-    if method.startswith(('typ-cover-', 'typ-cover_', 'typicality-cover-')):
-        import re
-        m_rate = re.search(r'rate[-_]?(\d+)', method)
-        rate = int(m_rate.group(1)) / 100.0 if m_rate else 0.50
-        m_gamma = re.search(r'gamma[-_]?([0-9.]+)', method)
-        gamma = float(m_gamma.group(1)) if m_gamma else 0.5
-        return typicality_cover_is.TypicalityCoverIS(
-            target_reduction=rate,
-            gamma=gamma,
-            random_state=42
-        )
-
-    # ── Diffusion-Cover IS ──────────────────────────────────────────────
-    if method.startswith(('diff-cover-', 'diff-cover_', 'diffusion-cover-', 'diffusion-cover_')):
-        import re
-        m_rate = re.search(r'rate[-_]?(\d+)', method)
-        rate = int(m_rate.group(1)) / 100.0 if m_rate else 0.50
-        m_gamma = re.search(r'gamma[-_]?([0-9.]+)', method)
-        gamma = float(m_gamma.group(1)) if m_gamma else 0.5
-        return diffusion_cover_is.DiffusionCoverIS(
             target_reduction=rate,
             gamma=gamma,
             random_state=42
