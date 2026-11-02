@@ -1,11 +1,10 @@
-import io
 import time
 from typing import Any, Optional
 
 import numpy as np
 import torch
 from sklearn.base import BaseEstimator, ClassifierMixin
-from torch.optim import Adam
+from torch.optim import AdamW
 from torch.utils.data import DataLoader
 from transformers import (
     AutoModelForSequenceClassification,
@@ -95,7 +94,8 @@ class SLMClassifier(BaseEstimator, ClassifierMixin):
         self.validation_loss: list[float] = []
         patience: int = 0
         best_loss: Optional[float] = None
-        best_weights: Optional[bytes] = None
+        best_weights: Optional[dict[str, torch.Tensor]] = None
+        self.best_epoch: int = 0
 
         data_loader_train, data_loader_val = prepare_training_datasets(
             X_train, y_train, X_val, y_val, self.tokenizer, self.max_len, self.batch_size
@@ -162,23 +162,21 @@ class SLMClassifier(BaseEstimator, ClassifierMixin):
             # --- checkpoint / patience ---
             if best_loss is None or dev_loss + self.min_val_epoch_impro_delta < best_loss:
                 best_loss = dev_loss
-                # buffer = io.BytesIO()
-                # torch.save(self.model.state_dict(), buffer)
-                # best_weights = buffer.getvalue()
+                patience = 0
+                self.best_epoch = self.epoch_id
+                best_weights = {k: v.detach().cpu().clone() for k, v in self.model.state_dict().items()}
                 print(f"  checkpoint : val loss improved → {best_loss:.4E} (saved)")
             else:
+                patience += 1
                 print(f"  patience   : {patience}/{self.max_patience}")
-                if patience == self.max_patience:
+                if patience >= self.max_patience:
                     print(f"\n[fit] early stopping triggered at epoch {self.epoch_id}.")
                     break
-                patience += 1
 
-        # Desativado até segunda ordem.
-        # print("-" * 70)
-        # if best_weights is not None:
-        #     buffer = io.BytesIO(best_weights)
-        #     self.model.load_state_dict(torch.load(buffer, map_location=self.device))
-        #     print(f"[fit] best weights restored (val loss: {best_loss:.4E})")
+        print("-" * 70)
+        if best_weights is not None:
+            self.model.load_state_dict(best_weights)
+            print(f"[fit] best weights restored from epoch {self.best_epoch} (val loss: {best_loss:.4E})")
 
         self._time_to_train = time.time() - self._time_to_train
         print(f"[fit] training complete in {self._time_to_train:.1f}s")
@@ -252,23 +250,23 @@ class SLMClassifier(BaseEstimator, ClassifierMixin):
     def score(self, X: Documents, y: Classes, sample_weight: Optional[np.ndarray] = None) -> None:
         pass
 
-    def _set_optimizer(self) -> Adam:
-        """Build the Adam optimizer with optional weight decay separation."""
+    def _set_optimizer(self) -> AdamW:
+        """AdamW with decoupled weight decay, except on biases and normalization weights."""
         if self.full_finetuning:
             param_optimizer = list(self.model.named_parameters())
-            no_decay = ['bias', 'gamma', 'beta']
+            no_decay = ['bias', 'norm', 'LayerNorm']
             optimizer_grouped_parameters = [
                 {
                     'params': [p for n, p in param_optimizer if not any(nd in n for nd in no_decay)],
-                    'weight_decay_rate': self.weight_decay_rate,
+                    'weight_decay': self.weight_decay_rate,
                 },
                 {
                     'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)],
-                    'weight_decay_rate': 0.0,
+                    'weight_decay': 0.0,
                 },
             ]
         else:
             param_optimizer = list(self.model.classifier.named_parameters())
             optimizer_grouped_parameters = [{'params': [p for _, p in param_optimizer]}]
 
-        return Adam(optimizer_grouped_parameters, lr=self.learning_rate)
+        return AdamW(optimizer_grouped_parameters, lr=self.learning_rate)

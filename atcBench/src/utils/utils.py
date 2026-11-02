@@ -327,7 +327,7 @@ def save_proba(file, X, y):
     with gzip.open(file, 'w') as filout:
         dump_svmlight_file(X, y, filout, zero_based=False)
           
-def save_results(config, y_test, y_pred_proba, time_train, time_predict, fold):
+def save_results(config, y_test, y_pred_proba, time_train, time_predict, fold, **extra):
     #args, clf, y_test, y_pred, y_pred_proba):
 
     outdir = config.paths.output_dir_full_path
@@ -351,6 +351,7 @@ def save_results(config, y_test, y_pred_proba, time_train, time_predict, fold):
         "time_train": time_train,
         "time_predict": time_predict,
         "machine": socket.gethostname(),
+        **extra,
     }
 
     with open(f"{outdir}/measures.fold_{fold}.json", 'w') as outfile:
