@@ -1,6 +1,6 @@
 from src.main.python.utils.general import get_data, get_splits, checkpoint_splits, translate_train_idxinfold
 from src.main.python.utils.arguments import arguments
-from src.main.python.utils.save_results import save_results
+from src.main.python.utils.save_results import save_results, save_selection_params
 import argparse
 from datetime import datetime
 import time
@@ -45,7 +45,7 @@ def get_selector(method: str, args=None):
         random_state=13
     )
 
-    # Entropy-adaptive version (zero-parameter)
+    # Entropy-adaptive version (no per-dataset tuning)
     if method == 'entropy-sublinear-ae-is': return entropy_sublinear_ae_is.EntropySublinearAEIS(
         r_max=0.50,            # max reduction
         alpha=15.0,            # entropy sensitivity (high due to K-Means uniform distribution)
@@ -98,23 +98,13 @@ def get_selector(method: str, args=None):
 
     # ── SAE-IS at fixed rates (Exp 4 & Diag) ──────────────────────────────
     # Method names: sae-rate-10, sae-rate-40, sae-cleaning-rate-40, sae-beta10-rate-40, etc.
+    # Every setting comes from the method name, so the name identifies the configuration.
     if method.startswith(('sae-', 'sae_', 'original-rate-', 'cleaning-rate-')):
         import re
         mode = 'cleaning' if 'clean' in method else 'original'
-        if args is not None and getattr(args, 'mode', None):
-            mode = args.mode
-        elif os.environ.get('SAE_MODE'):
-            mode = os.environ['SAE_MODE']
 
         m_beta = re.search(r'beta([0-9.]+)', method)
-        if m_beta:
-            beta_val = float(m_beta.group(1))
-        elif args is not None and getattr(args, 'beta', None) is not None:
-            beta_val = args.beta
-        elif os.environ.get('SAE_BETA'):
-            beta_val = float(os.environ['SAE_BETA'])
-        else:
-            beta_val = 1.0
+        beta_val = float(m_beta.group(1)) if m_beta else 1.0
 
         m_rate = re.search(r'rate[-_]?(\d+)', method)
         rate = int(m_rate.group(1)) / 100.0 if m_rate else 0.30
@@ -161,12 +151,7 @@ def get_selector(method: str, args=None):
             params['rmax_val'] = float(suffix[4:]) / 10.0 if len(suffix[4:]) <= 2 else float(suffix[4:])
             params['r_max'] = params.pop('rmax_val')
 
-        # n_clusters=-1 means use sqrt(N), which is the ESAE default behavior
-        # We handle this by passing a very large n_clusters that will be
-        # overridden inside EntropySublinearAEIS (it uses sqrt(N) anyway)
-        if params['n_clusters'] == -1:
-            params['n_clusters'] = 99999  # will be clamped to sqrt(N) inside ESAE
-
+        # n_clusters=-1 means sqrt(N), the ESAE default
         return entropy_sublinear_ae_is.EntropySublinearAEIS(**params)
 
     # ── Cluster-Random IS ──────────────────────────────────────────────
@@ -185,7 +170,13 @@ def get_selector(method: str, args=None):
     return None
 
 
-def get_selection(X, y, fold, args, info, old_train_idxs=None):
+def fold_random_state(seed, fold):
+    """Independent, reproducible random_state for repetition `seed` and fold `fold`."""
+    return int(np.random.SeedSequence([seed, fold]).generate_state(1)[0] % (2**31 - 1))
+
+
+def get_selection(X, y, fold, args, old_train_idxs=None):
+    """Fit the selector on one fold. Returns (kept indices, selector)."""
 
     method = args.method
 
@@ -193,20 +184,16 @@ def get_selection(X, y, fold, args, info, old_train_idxs=None):
     logger.debug(f"Total instances number: {total}")
 
     selector = get_selector(method, args=args)
+    if selector is None:
+        raise ValueError(f"Unknown selection method: {method}")
+
+    # --seed replaces the method's fixed random_state, giving one independent draw per (seed, fold)
+    if args.seed is not None and 'random_state' in selector.get_params():
+        selector.set_params(random_state=fold_random_state(args.seed, fold))
 
     selector.fit(X, y)
 
-    if hasattr(selector, 'low_percentile'):
-        info['low_percentile'] = selector.low_percentile
-    if hasattr(selector, 'high_percentile'):
-        info['high_percentile'] = selector.high_percentile
-
-    if hasattr(selector, 'beta'):
-        info['beta'] = selector.beta
-    if hasattr(selector, 'theta'):
-        info['theta'] = selector.theta
-
-    logger.info("Result: ", Counter(y[selector.sample_indices_]))
+    logger.info(f"Result: {Counter(y[selector.sample_indices_])}")
 
     # Diagnostic parquet saving (turned OFF by default)
     save_diag = getattr(args, 'save_diag', False) or (os.environ.get('SAE_SAVE_DIAG', '0').lower() in ('1', 'true'))
@@ -214,7 +201,7 @@ def get_selection(X, y, fold, args, info, old_train_idxs=None):
         diag_base = getattr(args, 'diag_dir', '') or os.environ.get('SAE_DIAG_DIR', '')
         if not diag_base:
             diag_base = os.path.abspath(os.path.join(args.out, '..'))
-        diag_dir = os.path.join(diag_base, 'diag', args.dataset, args.method)
+        diag_dir = os.path.join(diag_base, 'diag', args.dataset, args.method_tag)
         os.makedirs(diag_dir, exist_ok=True)
         diag_file = os.path.join(diag_dir, f"fold_{fold}.parquet")
 
@@ -229,7 +216,7 @@ def get_selection(X, y, fold, args, info, old_train_idxs=None):
         df_diag.to_parquet(diag_file, index=False)
         print(f"[DIAG] Saved {diag_file}")
 
-    return selector.sample_indices_
+    return selector.sample_indices_, selector
 
 
 def main():
@@ -240,14 +227,14 @@ def main():
     logger.info(str(args))
 
     # ── Verifica se o split já foi gerado para esse dataset/método ─────────
-    filename = f"{args.outputdir}/split_{args.folds}_{args.method}_idxinfold.pkl"
+    filename = f"{args.outputdir}/split_{args.folds}_{args.method_tag}_idxinfold.pkl"
     translated_filename = filename.replace("_idxinfold", "")
 
     already_exists = os.path.isfile(filename) and os.path.isfile(translated_filename)
 
     if already_exists and not args.overwrite:
         logger.info(f"SKIP: split já existe em '{filename}' e overwrite=False. Pulando execução.")
-        print(f"SKIP: {args.dataset} / {args.method} já processado. Use --overwrite para forçar.")
+        print(f"SKIP: {args.dataset} / {args.method_tag} já processado. Use --overwrite para forçar.")
         exit(0)
 
     if already_exists and args.overwrite:
@@ -257,6 +244,7 @@ def main():
     splits_df = get_splits(f"{args.splitdir}/split_{args.folds}.pkl")
 
     splits_to_save = {c: [] for c in splits_df.columns if c.endswith("idxs")}
+    folds_record = []
 
     for f in range(args.folds):
     # for f in range(1):
@@ -272,12 +260,22 @@ def main():
 
         ti = time.time()
 
-        idxs_docs = get_selection(X_train, y_train, f, args, info, old_train_idxs=splits_df.loc[f].train_idxs)
+        idxs_docs, selector = get_selection(X_train, y_train, f, args, old_train_idxs=splits_df.loc[f].train_idxs)
+        elapsed = time.time() - ti
 
         s = len(y_train[idxs_docs])
         r = (t-s)/t
 
-        info['time_for_reduce'].append(time.time() - ti)
+        folds_record.append({
+            "fold": f,
+            "n_train": t,
+            "n_kept": s,
+            "reduction": r,
+            "time_seconds": elapsed,
+            **selector.selection_record(),
+        })
+
+        info['time_for_reduce'].append(elapsed)
         print(info['time_for_reduce'])
         info['original_len'].append(t)
         info['reduced_len'].append(s)
@@ -304,6 +302,8 @@ def main():
         splits_df=splits_to_save_df_traslated,
         filename=translated_filename
     )
+
+    save_selection_params(args, folds_record)
 
     if args.save:
         save_results(args, info)

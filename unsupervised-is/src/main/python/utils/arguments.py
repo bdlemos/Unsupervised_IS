@@ -34,9 +34,9 @@ def arguments():
     parser.add_argument("--overwrite", default=1)
     parser.add_argument("--save-diag", type=lambda x: bool(str2bool(x)), default=False)
     parser.add_argument("--diag-dir", type=str, default="")
-    parser.add_argument("--beta", type=float, default=None)
-    parser.add_argument("--mode", type=str, default=None)
-    parser.add_argument("--tau", type=float, default=None)
+    parser.add_argument("--seed", type=int, default=None,
+                        help="repetition seed; replaces the method's fixed random_state with one derived "
+                             "from (seed, fold), and tags outputs as <method>-seed<seed>")
 
     args = parser.parse_args()
 
@@ -47,7 +47,9 @@ def arguments():
     # args.outputdir=f'outselection2/{args.dataset}/'
     args.outputdir = f'{args.out}/selection/{args.dataset}/'
 
-    args.filename = f"{args.outputdir}/saida_{args.method}"
+    args.method_tag = args.method if args.seed is None else f"{args.method}-seed{args.seed}"
+
+    args.filename = f"{args.outputdir}/saida_{args.method_tag}"
 
     args.start_time = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
 
@@ -59,7 +61,7 @@ def arguments():
         os.system("mkdir -p {}".format(args.outputdir))
 
     with open(args.filename, "w") as arq:
-        arq.write(f"{args.method}\n{args}\n")
+        arq.write(f"{args.method_tag}\n{args}\n")
 
     random.seed(1608637542)
 

@@ -49,7 +49,13 @@ class InstanceSelectionMixin:
         """Executa a seleção. Popula self.sample_indices_."""
 ```
 
-Após `fit(X, y)`, os índices selecionados estão em `selector.sample_indices_`.
+Após `fit(X, y)`, os índices selecionados estão em `selector.sample_indices_`, e
+`selector.selection_record()` devolve os parâmetros do construtor (`params`) e os valores
+que decidiram a seleção (`selection`: K efetivo, entropia, taxa alvo, λ, células podadas, etc.).
+
+Os métodos da família ESAE (ESAE-IS, SAE-IS e as ablações) são montados a partir de
+`iSel/esae_core.py` (tesselação, regra de entropia, cotas sublineares e remoção dentro das
+células). `n_clusters=-1` significa K = √N. Toda a aleatoriedade usa `RandomState(random_state)`.
 
 ## Registry de Métodos
 
@@ -67,11 +73,16 @@ python scripts/run_generateSplit.py \
   --inputrep jina-v5
 ```
 
+`--seed N` gera uma repetição independente: o `random_state` fixo do método é trocado por um
+derivado de `(N, fold)`, e as saídas ganham o sufixo `-seedN` (ex.: `split_10_random-rate-40-seed3.pkl`).
+Sem `--seed`, o comportamento é o de sempre (o `random_state` do registry).
+
 ### Outputs
 
 Para cada combinação dataset × method × fold:
 - `selection/<dataset>/split_10_<method>.pkl` — PKL com os índices selecionados (traduzidos para índices globais)
 - `selection/<dataset>/split_10_<method>_idxinfold.pkl` — PKL com índices relativos ao fold
 - `selection/<dataset>/saida_<method>.json` — Métricas de tempo e redução
+- `selection/<dataset>/split_10_<method>_params.json` — Por fold: parâmetros do seletor, `random_state`, valores de decisão (`selection`), redução realizada, tempo e o commit do código (`GIT_COMMIT` sobrepõe, útil no Docker sem `.git`)
 
 O script `read_selection_ci.py` consolida todos os JSONs em `selection_summary.csv`.
