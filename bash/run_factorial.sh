@@ -32,7 +32,9 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="${ROOT_DIR:-$(cd "${SCRIPT_DIR}/.." && pwd)}"
-DATASETS="${DATASETS:-ohsumed,trec,books,20ng,webkb,reuters90,sst1,mpqa,yelp_reviews}"
+# Ascending size (docs), so the small datasets finish first: yelp_reviews 5000, trec 5952, webkb 8199,
+# mpqa 10606, sst1 11855, reuters90 13327, ohsumed 18302, 20ng 18846, books 33594
+DATASETS="${DATASETS:-yelp_reviews,trec,webkb,mpqa,sst1,reuters90,ohsumed,20ng,books}"
 RATES="${RATES:-entropy r20}"
 SELECTIONS="${SELECTIONS:-re cells global}"
 SEEDS="${SEEDS:-1 2 3 4 5}"

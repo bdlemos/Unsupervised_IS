@@ -4,6 +4,7 @@ from typing import Any, Optional
 import numpy as np
 import torch
 from sklearn.base import BaseEstimator, ClassifierMixin
+from sklearn.metrics import f1_score
 from torch.optim import AdamW
 from torch.utils.data import DataLoader
 from transformers import (
@@ -93,7 +94,8 @@ class SLMClassifier(BaseEstimator, ClassifierMixin):
         self.training_loss: list[float] = []
         self.validation_loss: list[float] = []
         patience: int = 0
-        best_loss: Optional[float] = None
+        self.validation_f1: list[float] = []
+        best_f1: Optional[float] = None
         best_weights: Optional[dict[str, torch.Tensor]] = None
         self.best_epoch: int = 0
 
@@ -143,29 +145,36 @@ class SLMClassifier(BaseEstimator, ClassifierMixin):
             # --- validate ---
             self.model.eval()
             vl_loss, nb_vl_steps = 0.0, 0
+            val_pred, val_true = [], []
 
             for batch in data_loader_val:
                 batch = {k: v.type(torch.long).to(self.device) for k, v in batch.items()}
                 with torch.no_grad():
                     outputs = self.model(**batch)
-                    loss, _ = outputs[:2]
+                    loss, logits = outputs[:2]
                 vl_loss += loss.item()
                 nb_vl_steps += 1
+                val_pred.append(logits.argmax(dim=-1).cpu().numpy())
+                val_true.append(batch['labels'].cpu().numpy())
 
             dev_loss = vl_loss / nb_vl_steps
+            dev_f1 = f1_score(np.concatenate(val_true), np.concatenate(val_pred), average='macro')
             self.validation_loss.append(dev_loss)
+            self.validation_f1.append(dev_f1)
 
             current_lr = scheduler.get_last_lr()[0]
             print(f"  train loss : {epoch_train_loss:.4E}")
-            print(f"  val loss   : {dev_loss:.4E}  |  lr: {current_lr:.2e}")
+            print(f"  val loss   : {dev_loss:.4E}  |  val macro-F1: {dev_f1:.4f}  |  lr: {current_lr:.2e}")
 
-            # --- checkpoint / patience ---
-            if best_loss is None or dev_loss + self.min_val_epoch_impro_delta < best_loss:
-                best_loss = dev_loss
+            # --- checkpoint / patience on validation macro-F1 ---
+            # (val loss rises from epoch ~2 through overconfidence while F1 still improves,
+            #  so selecting on loss picked under-trained epoch-1/2 models)
+            if best_f1 is None or dev_f1 > best_f1 + self.min_val_epoch_impro_delta:
+                best_f1 = dev_f1
                 patience = 0
                 self.best_epoch = self.epoch_id
                 best_weights = {k: v.detach().cpu().clone() for k, v in self.model.state_dict().items()}
-                print(f"  checkpoint : val loss improved → {best_loss:.4E} (saved)")
+                print(f"  checkpoint : val macro-F1 improved → {best_f1:.4f} (saved)")
             else:
                 patience += 1
                 print(f"  patience   : {patience}/{self.max_patience}")
@@ -176,7 +185,7 @@ class SLMClassifier(BaseEstimator, ClassifierMixin):
         print("-" * 70)
         if best_weights is not None:
             self.model.load_state_dict(best_weights)
-            print(f"[fit] best weights restored from epoch {self.best_epoch} (val loss: {best_loss:.4E})")
+            print(f"[fit] best weights restored from epoch {self.best_epoch} (val macro-F1: {best_f1:.4f})")
 
         self._time_to_train = time.time() - self._time_to_train
         print(f"[fit] training complete in {self._time_to_train:.1f}s")
