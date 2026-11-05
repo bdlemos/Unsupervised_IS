@@ -12,10 +12,17 @@ from transformers import (
     AutoTokenizer,
     get_linear_schedule_with_warmup,
 )
+from transformers.utils import logging as hf_logging
 from tqdm import tqdm
 
 from src.model.slmdatahandle import prepare_inference_datasets, prepare_training_datasets, prep_data
 from src.utils.misc import Classes, Documents
+
+# Every fold reloads the checkpoint, and transformers then prints a "Loading weights" bar and a
+# LOAD REPORT warning (decoder.bias UNEXPECTED, classifier.* MISSING), which is expected when a
+# classification head is put on a masked-LM checkpoint. Keep errors only.
+hf_logging.set_verbosity_error()
+hf_logging.disable_progress_bar()
 
 
 class SLMClassifier(BaseEstimator, ClassifierMixin):
