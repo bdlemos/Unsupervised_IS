@@ -38,6 +38,9 @@ def arguments():
     parser.add_argument("--seed", type=int, default=None,
                         help="repetition seed; replaces the method's fixed random_state with one derived "
                              "from (seed, fold), and tags outputs as <method>-seed<seed>")
+    parser.add_argument("--match-dir", type=str, default=os.environ.get("MATCH_SELECTION_DIR", ""),
+                        help="for fx-match<ref>-* methods: selection root holding <dataset>/split_<folds>_<ref>.pkl, "
+                             "whose per-fold kept counts are matched (default: $MATCH_SELECTION_DIR)")
 
     args = parser.parse_args()
 

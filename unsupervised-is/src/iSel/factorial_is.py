@@ -9,6 +9,8 @@ FactorialIS(rate, selection):
 rate
     "entropy"   the ESAE rule r = r_max (1 - H^alpha) on the K = sqrt(N) cells
     float       a fixed rate, the same for every dataset (e.g. 0.20)
+    "matched"   keep exactly `keep_count` instances, a count given from outside per fold
+                (e.g. the size biO-IS kept in that fold, see run_generateSplit.py)
 
 selection
     "re"        sublinear cell quotas, removal weighted by 1/RE (ESAE-IS)
@@ -38,6 +40,7 @@ from src.iSel.base import InstanceSelectionMixin
 from src.iSel.autoencoder_is import AutoencoderIS
 
 SELECTIONS = ("re", "cells", "global")
+RATE_RULES = ("entropy", "matched")
 
 
 class FactorialIS(InstanceSelectionMixin):
@@ -52,6 +55,7 @@ class FactorialIS(InstanceSelectionMixin):
         gamma: float = 0.5,
         ae_epochs: int = 50,
         random_state: int = 13,
+        keep_count: int | None = None,
     ) -> None:
         self.rate = rate
         self.selection = selection
@@ -61,13 +65,16 @@ class FactorialIS(InstanceSelectionMixin):
         self.gamma = gamma
         self.ae_epochs = ae_epochs
         self.random_state = random_state
+        self.keep_count = keep_count
         self.sample_indices_ = []
 
     def _check_params(self):
         if self.selection not in SELECTIONS:
             raise ValueError(f"selection must be one of {SELECTIONS}, got {self.selection!r}")
-        if self.rate != "entropy" and not (isinstance(self.rate, (int, float)) and 0.0 < self.rate < 1.0):
-            raise ValueError(f"rate must be 'entropy' or a float in (0, 1), got {self.rate!r}")
+        if self.rate not in RATE_RULES and not (isinstance(self.rate, (int, float)) and 0.0 < self.rate < 1.0):
+            raise ValueError(f"rate must be one of {RATE_RULES} or a float in (0, 1), got {self.rate!r}")
+        if self.rate == "matched" and self.keep_count is None:
+            raise ValueError("rate='matched' needs keep_count (the number of instances to keep)")
 
     def _reconstruction_errors(self, X, y) -> np.ndarray:
         ae = AutoencoderIS(
@@ -109,12 +116,18 @@ class FactorialIS(InstanceSelectionMixin):
             self.entropy_ = H
             info.update(n_clusters=n_clusters, entropy=H)
 
-        if self.rate == "entropy":
-            target_reduction = esae_core.entropy_rate(self.entropy_, self.r_max, self.alpha)
+        if self.rate == "matched":
+            if not 0 < self.keep_count <= n_samples:
+                raise ValueError(f"keep_count must be in [1, {n_samples}], got {self.keep_count}")
+            target_keep_count = int(self.keep_count)
+            target_reduction = 1.0 - target_keep_count / n_samples
         else:
-            target_reduction = float(self.rate)
+            if self.rate == "entropy":
+                target_reduction = esae_core.entropy_rate(self.entropy_, self.r_max, self.alpha)
+            else:
+                target_reduction = float(self.rate)
+            target_keep_count = int(n_samples * (1.0 - target_reduction))
         self.target_reduction_ = target_reduction
-        target_keep_count = int(n_samples * (1.0 - target_reduction))
         print(f"[FactorialIS] rate={self.rate} selection={self.selection} → "
               f"target reduction {target_reduction:.2%} (keeping {target_keep_count} / {n_samples})")
 
@@ -134,7 +147,7 @@ class FactorialIS(InstanceSelectionMixin):
 
         self._set_selection(
             X, y, mask,
-            rate_rule=self.rate if self.rate == "entropy" else "fixed",
+            rate_rule=self.rate if self.rate in RATE_RULES else "fixed",
             target_reduction=target_reduction,
             target_keep_count=target_keep_count,
             **info,

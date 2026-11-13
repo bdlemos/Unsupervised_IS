@@ -11,6 +11,7 @@ import types
 
 import pytest
 
+from pipeline import make_dataset
 from synthetic import fake_ae_fit
 
 # E2SC imports nmslib at module level; the tests never run E2SC, so a stub lets the
@@ -26,3 +27,10 @@ def fake_ae(monkeypatch):
     """Replace autoencoder training with a deterministic score (no torch training in tests)."""
     from src.iSel import autoencoder_is
     monkeypatch.setattr(autoencoder_is.AutoencoderIS, "fit", fake_ae_fit)
+
+
+@pytest.fixture
+def dataset(tmp_path):
+    """A toy dataset under tmp_path in the layout run_generateSplit.py reads."""
+    make_dataset(tmp_path)
+    return tmp_path

@@ -8,6 +8,7 @@ import numpy as np
 import gc
 import io
 import os
+import re
 import pandas as pd
 from collections import Counter
 from src.iSel import biois, autoencoder_is
@@ -155,9 +156,14 @@ def get_selector(method: str, args=None):
         return entropy_sublinear_ae_is.EntropySublinearAEIS(**params)
 
     # ── Rate x selection factorial (Marcos) ────────────────────────────
-    # Method names: fx-<rate>-<selection>, rate = entropy | r<percent> (r20, r21.3),
-    # selection = re | cells | global. E.g. fx-entropy-cells, fx-r20-global.
+    # Method names: fx-<rate>-<selection>, rate = entropy | r<percent> (r20, r21.3) | match<ref>,
+    # selection = re | cells | global. E.g. fx-entropy-cells, fx-r20-global, fx-matchbiois-global.
+    # match<ref> keeps, in every fold, exactly as many instances as the selection of method <ref>
+    # did (read from its split by main(), see reference_keep_counts).
     if method.startswith('fx-'):
+        if matched_reference(method) is not None:
+            selection = method.rsplit('-', 1)[1]
+            return factorial_is.FactorialIS(rate='matched', selection=selection, random_state=13)
         import re
         m = re.fullmatch(r'fx-(entropy|r(\d+(?:\.\d+)?))-(re|cells|global)', method)
         if m is None:
@@ -181,13 +187,58 @@ def get_selector(method: str, args=None):
     return None
 
 
+MATCHED_METHOD = re.compile(r'fx-match([a-z0-9]+)-(re|cells|global)')
+
+
+def matched_reference(method):
+    """'fx-matchbiois-global' -> 'biois' (the method whose per-fold kept count is matched); else None."""
+    m = MATCHED_METHOD.fullmatch(method)
+    return m.group(1) if m else None
+
+
+def reference_split_path(match_dir, dataset, folds, reference):
+    return os.path.join(match_dir, dataset, f"split_{folds}_{reference}.pkl")
+
+
+def reference_keep_counts(match_dir, dataset, folds, reference, base_splits):
+    """Per-fold number of training instances the `reference` selection kept, from its split pkl.
+
+    `match_dir` is a selection root laid out as <match_dir>/<dataset>/split_<folds>_<reference>.pkl
+    (e.g. results/jina-results/jina-v5/instance_selection/selection). Each fold's kept indices
+    must be a subset of the same fold's training indices in `base_splits`, so the reference was
+    selected on the same folds as this run.
+    """
+    if not match_dir:
+        raise FileNotFoundError(
+            f"matching '{reference}' needs its selection: pass --match-dir or set MATCH_SELECTION_DIR "
+            f"to the folder holding <dataset>/split_{folds}_{reference}.pkl")
+    path = reference_split_path(match_dir, dataset, folds, reference)
+    if not os.path.isfile(path):
+        raise FileNotFoundError(f"reference selection not found: {path} (the {reference} split of {dataset})")
+    ref = pd.read_pickle(path)
+    if len(ref) != folds:
+        raise ValueError(f"{path} has {len(ref)} folds, expected {folds}")
+    counts = []
+    for f in range(folds):
+        kept = set(np.asarray(ref.iloc[f]['train_idxs']).tolist())
+        train = set(np.asarray(base_splits.loc[f].train_idxs).tolist())
+        if not kept <= train:
+            raise ValueError(f"{path} fold {f}: {len(kept - train)} kept indices are not in the fold's "
+                             f"training set; the reference was selected on other folds")
+        counts.append(len(kept))
+    return counts, path
+
+
 def fold_random_state(seed, fold):
     """Independent, reproducible random_state for repetition `seed` and fold `fold`."""
     return int(np.random.SeedSequence([seed, fold]).generate_state(1)[0] % (2**31 - 1))
 
 
-def get_selection(X, y, fold, args, old_train_idxs=None):
-    """Fit the selector on one fold. Returns (kept indices, selector)."""
+def get_selection(X, y, fold, args, old_train_idxs=None, keep_count=None):
+    """Fit the selector on one fold. Returns (kept indices, selector).
+
+    keep_count, when given, is the exact number of instances a matched-rate selector keeps.
+    """
 
     method = args.method
 
@@ -201,6 +252,9 @@ def get_selection(X, y, fold, args, old_train_idxs=None):
     # --seed replaces the method's fixed random_state, giving one independent draw per (seed, fold)
     if args.seed is not None and 'random_state' in selector.get_params():
         selector.set_params(random_state=fold_random_state(args.seed, fold))
+
+    if keep_count is not None:
+        selector.set_params(keep_count=keep_count)
 
     selector.fit(X, y)
 
@@ -257,6 +311,13 @@ def main():
     splits_to_save = {c: [] for c in splits_df.columns if c.endswith("idxs")}
     folds_record = []
 
+    reference = matched_reference(args.method)
+    keep_counts = [None] * args.folds
+    if reference is not None:
+        keep_counts, reference_path = reference_keep_counts(
+            args.match_dir, args.dataset, args.folds, reference, splits_df)
+        logger.info(f"Matching {reference}: keep counts per fold {keep_counts} from {reference_path}")
+
     for f in range(args.folds):
     # for f in range(1):
 
@@ -268,23 +329,31 @@ def main():
 
         X_train, y_train, _, _, _ = get_data(args.inputdir, f)
         t = len(y_train)
+        if reference is not None and t != len(splits_df.loc[f].train_idxs):
+            raise ValueError(f"fold {f}: {args.inputrep} has {t} training rows but the split has "
+                             f"{len(splits_df.loc[f].train_idxs)}; the matched count would not match {reference}")
 
         ti = time.time()
 
-        idxs_docs, selector = get_selection(X_train, y_train, f, args, old_train_idxs=splits_df.loc[f].train_idxs)
+        idxs_docs, selector = get_selection(X_train, y_train, f, args, old_train_idxs=splits_df.loc[f].train_idxs,
+                                            keep_count=keep_counts[f])
         elapsed = time.time() - ti
 
         s = len(y_train[idxs_docs])
         r = (t-s)/t
 
-        folds_record.append({
+        record = {
             "fold": f,
             "n_train": t,
             "n_kept": s,
             "reduction": r,
             "time_seconds": elapsed,
             **selector.selection_record(),
-        })
+        }
+        if reference is not None:
+            record["match"] = {"reference": reference, "split": reference_path,
+                               "target_n_kept": keep_counts[f], "target_n_removed": t - keep_counts[f]}
+        folds_record.append(record)
 
         info['time_for_reduce'].append(elapsed)
         print(info['time_for_reduce'])

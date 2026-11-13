@@ -35,7 +35,8 @@ def main(exp_dict: DictConfig):
         time_predict = clf._time_to_predict
         save_results(config, y_test, y_pred_proba, time_train, time_predict, fold,
                      n_epochs=getattr(clf, 'epoch_id', None), best_epoch=getattr(clf, 'best_epoch', None),
-                     early_stop_metric='val_macro_f1' if hasattr(clf, 'validation_f1') else None)
+                     early_stop_metric=getattr(clf, 'early_stop_metric', None),
+                     training_regime=getattr(clf, 'training_regime', None))
 
         #Cleaning memory
         cleanMemory(clf)

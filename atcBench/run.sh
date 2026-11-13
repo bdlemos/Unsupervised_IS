@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
-# run command -> nohup ./run.sh [--num-processes N] [--methods m1,m2,...] [--datasets d1,d2,...] > run.log 2>&1 &
+# run command -> nohup ./run.sh [--num-processes N] [--methods m1,m2,...] [--datasets d1,d2,...] [--model-config NAME] > run.log 2>&1 &
+# --model-config (or env MODEL_CONFIG) picks conf/model/<NAME>.yaml, e.g. modernbert_legacy; default: config_default.yaml
 # Exemplo com 4 processos: nohup ./run.sh --num-processes 4 > run.log 2>&1 &
 
 set -euo pipefail
@@ -16,6 +17,7 @@ DEFAULT_DATASETS="mpqa,reuters90,sst1,ohsumed,twitter,webkb,yelp_reviews,sst2,db
 NUM_PROCESSES=$DEFAULT_NUM_PROCESSES
 METHODS_ARG="$DEFAULT_METHODS"
 DATASETS_ARG="$DEFAULT_DATASETS"
+MODEL_CONFIG="${MODEL_CONFIG:-}"
 
 # ── Argument parsing ────────────────────────────────────────────────────────
 while [[ $# -gt 0 ]]; do
@@ -32,9 +34,13 @@ while [[ $# -gt 0 ]]; do
             DATASETS_ARG="$2"
             shift 2
             ;;
+        --model-config)
+            MODEL_CONFIG="$2"
+            shift 2
+            ;;
         *)
             echo "Unknown argument: $1"
-            echo "Usage: $0 [--num-processes <N>] [--methods <m1,m2,...>] [--datasets <d1,d2,...>]"
+            echo "Usage: $0 [--num-processes <N>] [--methods <m1,m2,...>] [--datasets <d1,d2,...>] [--model-config <name>]"
             exit 1
             ;;
     esac
@@ -47,6 +53,13 @@ IFS=',' read -ra datasets <<< "$DATASETS_ARG"
 echo "Running with $NUM_PROCESSES concurrent processes..."
 echo "Methods  : ${methods[*]}"
 echo "Datasets : ${datasets[*]}"
+if [[ -n "$MODEL_CONFIG" ]]; then
+  if [[ ! -f "$ROOT_DIR/conf/model/${MODEL_CONFIG}.yaml" ]]; then
+    echo "Unknown model config: $ROOT_DIR/conf/model/${MODEL_CONFIG}.yaml"
+    exit 1
+  fi
+  echo "Model    : conf/model/${MODEL_CONFIG}.yaml"
+fi
 
 # Prefer project virtualenv python when available.
 if [[ -x "$ROOT_DIR/venv/bin/python" ]]; then
@@ -63,6 +76,7 @@ export PYTHONPATH="${PYTHONPATH:-}:$ROOT_DIR"
 export TB_CONFIG_NAME="config_default.yaml"
 export PYTHON_BIN
 export ROOT_DIR
+export MODEL_CONFIG
 
 # DICA: Para melhor balanceamento de carga, ordene os datasets do MAIOR para o MENOR.
 # Assim, os mais pesados começam primeiro e os menores preenchem o tempo no final.
@@ -98,7 +112,11 @@ printf "%s\n" "${combos[@]}" | xargs -n 1 -P "$NUM_PROCESSES" -I {} bash -c '
 
   # Appends, so the log of an interrupted earlier attempt is kept
   echo "===== $(date -Is) $combo =====" >> "$log_file"
-  "$PYTHON_BIN" main.py "data=$combo" >> "$log_file" 2>&1
+  model_override=()
+  if [ -n "$MODEL_CONFIG" ]; then
+    model_override=("model=$MODEL_CONFIG")
+  fi
+  "$PYTHON_BIN" main.py "data=$combo" ${model_override[@]+"${model_override[@]}"} >> "$log_file" 2>&1
 
   echo "[DONE] Finalizado $combo"
 '

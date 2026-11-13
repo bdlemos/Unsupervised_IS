@@ -5,7 +5,7 @@ import numpy as np
 import torch
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.metrics import f1_score
-from torch.optim import AdamW
+from torch.optim import Adam, AdamW
 from torch.utils.data import DataLoader
 from transformers import (
     AutoModelForSequenceClassification,
@@ -24,6 +24,104 @@ from src.utils.misc import Classes, Documents
 hf_logging.set_verbosity_error()
 hf_logging.disable_progress_bar()
 
+# Training regimes, chosen by model.training_args.regime (see conf/model/modernbert_legacy.yaml):
+#   current  AdamW (weight decay 0.01 off bias/norm), early stop on validation macro-F1 with
+#            patience counted in consecutive epochs, best-F1 weights restored before predicting
+#   legacy   the setup of every run up to 2026-11-02 (code at ef6dfb9; e.g. the biO-IS column of
+#            the main table): torch Adam with the group key 'weight_decay_rate', which Adam
+#            ignores, so the effective weight decay is 0; early stop on validation loss with a
+#            patience counter that is never reset; predicts with the LAST epoch's weights
+REGIMES = ("current", "legacy")
+
+
+def build_optimizer(named_parameters, lr: float, weight_decay_rate: float, regime: str = "current") -> Adam:
+    """Optimizer for full fine-tuning under `regime` (current: AdamW; legacy: Adam, no effective decay)."""
+    if regime not in REGIMES:
+        raise ValueError(f"regime must be one of {REGIMES}, got {regime!r}")
+    params = list(named_parameters)
+    if regime == "legacy":
+        # Verbatim from ef6dfb9: torch reads 'weight_decay', so 'weight_decay_rate' is stored in the
+        # group but unused and every group gets Adam's default weight_decay=0.
+        no_decay = ['bias', 'gamma', 'beta']
+        return Adam([
+            {'params': [p for n, p in params if not any(nd in n for nd in no_decay)],
+             'weight_decay_rate': weight_decay_rate},
+            {'params': [p for n, p in params if any(nd in n for nd in no_decay)],
+             'weight_decay_rate': 0.0},
+        ], lr=lr)
+    no_decay = ['bias', 'norm', 'LayerNorm']
+    return AdamW([
+        {'params': [p for n, p in params if not any(nd in n for nd in no_decay)],
+         'weight_decay': weight_decay_rate},
+        {'params': [p for n, p in params if any(nd in n for nd in no_decay)],
+         'weight_decay': 0.0},
+    ], lr=lr)
+
+
+class ValF1EarlyStopping:
+    """Current regime: stop after `max_patience` consecutive epochs without +min_delta val macro-F1."""
+
+    metric = "val_macro_f1"
+    restore_best = True
+
+    def __init__(self, max_patience: int, min_delta: float) -> None:
+        self.max_patience = max_patience
+        self.min_delta = min_delta
+        self.best: Optional[float] = None
+        self.patience = 0
+        self.should_stop = False
+
+    def update(self, val_loss: float, val_f1: float) -> bool:
+        """Record one epoch; True when it is the new best (its weights are the ones to keep)."""
+        if self.best is None or val_f1 > self.best + self.min_delta:
+            self.best = val_f1
+            self.patience = 0
+            return True
+        self.patience += 1
+        self.should_stop = self.patience >= self.max_patience
+        return False
+
+    def describe_improvement(self) -> str:
+        return f"val macro-F1 improved → {self.best:.4f} (saved)"
+
+
+class LegacyValLossStopping:
+    """Legacy regime (ef6dfb9), bug for bug: the patience counter is cumulative (never reset on an
+    improvement) and stops at the (max_patience + 1)-th non-improving epoch overall; nothing is
+    restored, so the model predicts with the last epoch's weights."""
+
+    metric = "val_loss_legacy"
+    restore_best = False
+
+    def __init__(self, max_patience: int, min_delta: float) -> None:
+        self.max_patience = max_patience
+        self.min_delta = min_delta
+        self.best: Optional[float] = None
+        self.patience = 0
+        self.should_stop = False
+
+    def update(self, val_loss: float, val_f1: float) -> bool:
+        if self.best is None or val_loss + self.min_delta < self.best:
+            self.best = val_loss
+            return True
+        if self.patience == self.max_patience:
+            self.should_stop = True
+        else:
+            self.patience += 1
+        return False
+
+    def describe_improvement(self) -> str:
+        return f"val loss improved → {self.best:.4E} (not restored: legacy regime)"
+
+
+EARLY_STOPPING = {"current": ValF1EarlyStopping, "legacy": LegacyValLossStopping}
+
+
+def make_early_stopping(regime: str, max_patience: int, min_delta: float):
+    if regime not in REGIMES:
+        raise ValueError(f"regime must be one of {REGIMES}, got {regime!r}")
+    return EARLY_STOPPING[regime](max_patience, min_delta)
+
 
 class SLMClassifier(BaseEstimator, ClassifierMixin):
 
@@ -41,6 +139,10 @@ class SLMClassifier(BaseEstimator, ClassifierMixin):
         self.min_val_epoch_impro_delta: float = model_config['training_args']['min_val_epoch_impro_delta']
         self.max_grad_norm: float = model_config['training_args']['max_grad_norm']
         self.warmup_ratio: float = model_config['training_args'].get('warmup_ratio', 0.06)
+        self.training_regime: str = model_config['training_args'].get('regime', 'current')
+        if self.training_regime not in REGIMES:
+            raise ValueError(f"model.training_args.regime must be one of {REGIMES}, got {self.training_regime!r}")
+        self.early_stop_metric: str = EARLY_STOPPING[self.training_regime].metric
 
         self.full_finetuning: bool = True
         self.epoch_id: int = 0
@@ -100,9 +202,8 @@ class SLMClassifier(BaseEstimator, ClassifierMixin):
 
         self.training_loss: list[float] = []
         self.validation_loss: list[float] = []
-        patience: int = 0
         self.validation_f1: list[float] = []
-        best_f1: Optional[float] = None
+        stopper = make_early_stopping(self.training_regime, self.max_patience, self.min_val_epoch_impro_delta)
         best_weights: Optional[dict[str, torch.Tensor]] = None
         self.best_epoch: int = 0
 
@@ -120,7 +221,7 @@ class SLMClassifier(BaseEstimator, ClassifierMixin):
             num_training_steps=total_steps,
         )
 
-        print(f"\n[fit] model={self.model_name} | classes={self.num_classes} | epochs={self.num_max_epochs} | patience={self.max_patience}")
+        print(f"\n[fit] model={self.model_name} | classes={self.num_classes} | epochs={self.num_max_epochs} | patience={self.max_patience} | regime={self.training_regime}")
         print(f"[fit] lr={self.learning_rate:.1e} | warmup={warmup_steps} steps ({self.warmup_ratio*100:.0f}% of {total_steps})")
         print("-" * 70)
 
@@ -173,26 +274,28 @@ class SLMClassifier(BaseEstimator, ClassifierMixin):
             print(f"  train loss : {epoch_train_loss:.4E}")
             print(f"  val loss   : {dev_loss:.4E}  |  val macro-F1: {dev_f1:.4f}  |  lr: {current_lr:.2e}")
 
-            # --- checkpoint / patience on validation macro-F1 ---
-            # (val loss rises from epoch ~2 through overconfidence while F1 still improves,
-            #  so selecting on loss picked under-trained epoch-1/2 models)
-            if best_f1 is None or dev_f1 > best_f1 + self.min_val_epoch_impro_delta:
-                best_f1 = dev_f1
-                patience = 0
-                self.best_epoch = self.epoch_id
-                best_weights = {k: v.detach().cpu().clone() for k, v in self.model.state_dict().items()}
-                print(f"  checkpoint : val macro-F1 improved → {best_f1:.4f} (saved)")
+            # --- checkpoint / patience (current: on validation macro-F1, since val loss rises from
+            #     epoch ~2 through overconfidence while F1 still improves, so selecting on loss picked
+            #     under-trained epoch-1/2 models; legacy: see LegacyValLossStopping) ---
+            if stopper.update(dev_loss, dev_f1):
+                if stopper.restore_best:
+                    self.best_epoch = self.epoch_id
+                    best_weights = {k: v.detach().cpu().clone() for k, v in self.model.state_dict().items()}
+                print(f"  checkpoint : {stopper.describe_improvement()}")
             else:
-                patience += 1
-                print(f"  patience   : {patience}/{self.max_patience}")
-                if patience >= self.max_patience:
+                print(f"  patience   : {stopper.patience}/{self.max_patience}")
+                if stopper.should_stop:
                     print(f"\n[fit] early stopping triggered at epoch {self.epoch_id}.")
                     break
 
         print("-" * 70)
         if best_weights is not None:
             self.model.load_state_dict(best_weights)
-            print(f"[fit] best weights restored from epoch {self.best_epoch} (val macro-F1: {best_f1:.4f})")
+            print(f"[fit] best weights restored from epoch {self.best_epoch} (val macro-F1: {stopper.best:.4f})")
+        elif not stopper.restore_best:
+            # legacy: the model predicts with the weights of the last epoch trained
+            self.best_epoch = self.epoch_id
+            print(f"[fit] legacy regime: predicting with the last epoch's weights (epoch {self.epoch_id})")
 
         self._time_to_train = time.time() - self._time_to_train
         print(f"[fit] training complete in {self._time_to_train:.1f}s")
@@ -266,23 +369,11 @@ class SLMClassifier(BaseEstimator, ClassifierMixin):
     def score(self, X: Documents, y: Classes, sample_weight: Optional[np.ndarray] = None) -> None:
         pass
 
-    def _set_optimizer(self) -> AdamW:
-        """AdamW with decoupled weight decay, except on biases and normalization weights."""
+    def _set_optimizer(self) -> Adam:
+        """Optimizer of the training regime (see build_optimizer); head-only when not full fine-tuning."""
         if self.full_finetuning:
-            param_optimizer = list(self.model.named_parameters())
-            no_decay = ['bias', 'norm', 'LayerNorm']
-            optimizer_grouped_parameters = [
-                {
-                    'params': [p for n, p in param_optimizer if not any(nd in n for nd in no_decay)],
-                    'weight_decay': self.weight_decay_rate,
-                },
-                {
-                    'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)],
-                    'weight_decay': 0.0,
-                },
-            ]
-        else:
-            param_optimizer = list(self.model.classifier.named_parameters())
-            optimizer_grouped_parameters = [{'params': [p for _, p in param_optimizer]}]
-
+            return build_optimizer(self.model.named_parameters(), self.learning_rate,
+                                   self.weight_decay_rate, self.training_regime)
+        param_optimizer = list(self.model.classifier.named_parameters())
+        optimizer_grouped_parameters = [{'params': [p for _, p in param_optimizer]}]
         return AdamW(optimizer_grouped_parameters, lr=self.learning_rate)
