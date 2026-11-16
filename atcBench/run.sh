@@ -60,6 +60,13 @@ if [[ -n "$MODEL_CONFIG" ]]; then
   fi
   echo "Model    : conf/model/${MODEL_CONFIG}.yaml"
 fi
+# Output folder of the model (conf/paths: output/<model_tag>/<combo>); the skip check below must look
+# there, or a non-ModernBERT run (e.g. roberta) never resumes
+MODEL_TAG="$(awk '/^model_tag:/ {print $2}' "$ROOT_DIR/conf/model/${MODEL_CONFIG:-modernbert}.yaml")"
+if [[ -z "$MODEL_TAG" ]]; then
+  echo "No model_tag in conf/model/${MODEL_CONFIG:-modernbert}.yaml"
+  exit 1
+fi
 
 # Prefer project virtualenv python when available.
 if [[ -x "$ROOT_DIR/venv/bin/python" ]]; then
@@ -77,6 +84,7 @@ export TB_CONFIG_NAME="config_default.yaml"
 export PYTHON_BIN
 export ROOT_DIR
 export MODEL_CONFIG
+export MODEL_TAG
 
 # DICA: Para melhor balanceamento de carga, ordene os datasets do MAIOR para o MENOR.
 # Assim, os mais pesados começam primeiro e os menores preenchem o tempo no final.
@@ -94,8 +102,8 @@ printf "%s\n" "${combos[@]}" | xargs -n 1 -P "$NUM_PROCESSES" -I {} bash -c '
   IFS="|" read -r dataset method <<< "{}"
   combo="${dataset}_${method}"
   results_dir="${RESULTS_DIR:-$ROOT_DIR/../results}"
-  out_dir="$results_dir/classificacao/output/modernbert/${combo}"
-  log_dir="$results_dir/classificacao/logs_modernbert/${dataset}"
+  out_dir="$results_dir/classificacao/output/${MODEL_TAG}/${combo}"
+  log_dir="$results_dir/classificacao/logs_${MODEL_TAG}/${dataset}"
   mkdir -p "$log_dir"
   log_file="$log_dir/${method}.log"
 

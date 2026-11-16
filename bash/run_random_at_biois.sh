@@ -1,15 +1,22 @@
 #!/bin/bash
 # ══════════════════════════════════════════════════════════════════════════════
-# Random selection at biO-IS's per-fold reduction, LEGACY ModernBERT training (2026-11)
+# Random selection at biO-IS's per-fold reduction (2026-11), plus biO-IS and No-IS in the same run
 # ══════════════════════════════════════════════════════════════════════════════
 #
 # Does the supervised biO-IS beat plain random removal of the same number of instances?
 # For every (dataset, fold, seed) the random selection keeps exactly as many training instances as
 # biO-IS kept in that fold, chosen uniformly (fx-matchbiois-global, see FactorialIS rate="matched"
-# and run_generateSplit.reference_keep_counts). Classification uses the LEGACY training regime
-# (conf/model/modernbert_legacy.yaml: Adam without effective weight decay, cumulative val-loss
+# and run_generateSplit.reference_keep_counts). By default classification uses the LEGACY training
+# regime (conf/model/modernbert_legacy.yaml: Adam without effective weight decay, cumulative val-loss
 # patience, last-epoch weights), the regime of the biO-IS and No-IS numbers in the main table
 # (experiments/2026-09_main-results-jina-v5), so each random fold pairs with the biO-IS fold.
+# MODEL_CONFIG picks another conf/model/<name>.yaml (e.g. modernbert = current regime, roberta); the
+# output folder follows that config's model_tag.
+#
+# Controlled comparisons (same machine, regime and folds for every arm) add:
+#   ANCHOR_DATASETS   biO-IS itself re-classified on its original split (1 run: its selection is fixed)
+#   INCLUDE_NO_IS=1   No-IS (full data) on the DATASETS (1 run: the classifier seed is fixed)
+#   SEEDS=""          no random arm (e.g. only the anchor and No-IS)
 #
 # biO-IS per-fold kept counts are read from its selection splits:
 #   ${MATCH_SELECTION_DIR}/<dataset>/split_10_biois.pkl
@@ -25,6 +32,8 @@
 #   bash bash/run_random_at_biois.sh                         # seeds 1 2 3 (completed work is skipped)
 #   ANCHOR_DATASETS=trec,webkb bash bash/run_random_at_biois.sh   # also re-classify biO-IS itself under the
 #                                                            # legacy regime, to check it reproduces the table
+#   MODEL_CONFIG=modernbert INCLUDE_NO_IS=1 ANCHOR_DATASETS=trec DATASETS=trec bash bash/run_random_at_biois.sh
+#                                                            # current regime: random, biO-IS and No-IS on trec
 #
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -34,16 +43,22 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="${ROOT_DIR:-$(cd "${SCRIPT_DIR}/.." && pwd)}"
 # The 19 datasets of paper/gen_main_table.py, roughly ascending size (small ones finish first)
 DATASETS="${DATASETS:-mpqa,trec,sst2,twitter,vader_movie,movie_review,sst1,pang_movie,subj,yelp_reviews,wos5736,reuters90,webkb,wos11967,ohsumed,20ng,acm,dblp,books}"
-SEEDS="${SEEDS:-1 2 3}"
+SEEDS="${SEEDS-1 2 3}"   # empty = no random arm
 SELECTIONS="${SELECTIONS:-global}"
 REFERENCE="biois"
 INPUT_REP="${INPUT_REP:-jina-v5}"
 FOLDS=10
 ANCHOR_DATASETS="${ANCHOR_DATASETS:-}"
+INCLUDE_NO_IS="${INCLUDE_NO_IS:-0}"
 RESULTS_DIR="${RESULTS_DIR:-${ROOT_DIR}/results/exp-random-at-biois}"
 MATCH_SELECTION_DIR="${MATCH_SELECTION_DIR:-${ROOT_DIR}/results/jina-results/jina-v5/instance_selection/selection}"
 export MODEL_CONFIG="${MODEL_CONFIG:-modernbert_legacy}"
 export MATCH_SELECTION_DIR
+MODEL_TAG="$(awk '/^model_tag:/ {print $2}' "${ROOT_DIR}/atcBench/conf/model/${MODEL_CONFIG}.yaml" 2>/dev/null || true)"
+if [[ -z "${MODEL_TAG}" ]]; then
+    echo "ERROR: no model_tag in ${ROOT_DIR}/atcBench/conf/model/${MODEL_CONFIG}.yaml"
+    exit 1
+fi
 export DATASETS_DIR="${DATASETS_DIR:-${ROOT_DIR}/datasets}"
 if [[ -d "/app/venv" ]]; then
     export VENV_PATH="/app/venv"
@@ -52,12 +67,15 @@ else
 fi
 
 methods=()
+if [[ "${INCLUDE_NO_IS}" == "1" ]]; then
+    methods+=("no-is")
+fi
 for seed in ${SEEDS}; do
     for selection in ${SELECTIONS}; do
         methods+=("fx-match${REFERENCE}-${selection}-seed${seed}")
     done
 done
-METHODS="$(IFS=,; echo "${methods[*]}")"
+METHODS="$(IFS=,; echo "${methods[*]+${methods[*]}}")"
 
 IFS=',' read -ra dataset_list <<< "${DATASETS}"
 IFS=',' read -ra anchor_list <<< "${ANCHOR_DATASETS}"
@@ -66,9 +84,10 @@ n_methods="${#methods[@]}"
 n_anchor="${#anchor_list[@]}"
 
 echo "═══════════════════════════════════════════════════════════════════"
-echo "  Random at biO-IS rate (legacy training)"
+echo "  Random at biO-IS rate (${MODEL_CONFIG})"
 echo "  Datasets:    ${DATASETS}"
-echo "  Seeds:       ${SEEDS}"
+echo "  Seeds:       ${SEEDS:-none (no random arm)}"
+echo "  No-IS:       ${INCLUDE_NO_IS}"
 echo "  Rule:        ${SELECTIONS}"
 echo "  Model:       conf/model/${MODEL_CONFIG}.yaml"
 echo "  biO-IS from: ${MATCH_SELECTION_DIR}/<dataset>/split_${FOLDS}_${REFERENCE}.pkl"
@@ -82,8 +101,8 @@ echo "════════════════════════�
 
 # Every dataset needs its biO-IS split before anything runs
 missing=()
-for dataset in "${dataset_list[@]}" "${anchor_list[@]}"; do
-    [[ -z "${dataset}" ]] && continue
+# Each dataset once, whether it is in DATASETS, ANCHOR_DATASETS or both
+for dataset in $(printf '%s\n' "${dataset_list[@]}" "${anchor_list[@]}" | awk 'NF && !seen[$0]++'); do
     reference_split="${MATCH_SELECTION_DIR}/${dataset}/split_${FOLDS}_${REFERENCE}.pkl"
     if [[ -f "${reference_split}" ]]; then
         reduction="$(python3 -c "import json,sys; i=json.load(open(sys.argv[1]))['info']; print(f\"{sum(1-k/n for k,n in zip(i['reduced_len'],i['original_len']))/len(i['reduced_len']):.2%}\")" \
@@ -100,7 +119,7 @@ if [[ "${#missing[@]}" -gt 0 ]]; then
 fi
 
 if [[ -n "${DRY_RUN:-}" ]]; then
-    printf '%s\n' "${methods[@]}"
+    printf '%s\n' ${methods[@]+"${methods[@]}"}
     exit 0
 fi
 
@@ -112,7 +131,7 @@ PIPELINE_ARGS=(
     --methods "${METHODS}"
     --datasets "${DATASETS}"
     --inputrep "${INPUT_REP}"
-    --model "modernbert"
+    --model "${MODEL_TAG}"
 )
 if [[ -n "${STEPS:-}" ]]; then
     PIPELINE_ARGS+=(--steps "${STEPS}")
@@ -130,7 +149,9 @@ if [[ "${n_anchor}" -gt 0 && ( -z "${STEPS:-}" || ",${STEPS}," =~ ,(3|benchmark)
         --methods "${REFERENCE}" --datasets "${ANCHOR_DATASETS}" --model-config "${MODEL_CONFIG}")
 fi
 
-RESULTS_DIR="${RESULTS_DIR}" bash "${SCRIPT_DIR}/run_pipeline.sh" "${PIPELINE_ARGS[@]}"
+if [[ "${n_methods}" -gt 0 ]]; then
+    RESULTS_DIR="${RESULTS_DIR}" bash "${SCRIPT_DIR}/run_pipeline.sh" "${PIPELINE_ARGS[@]}"
+fi
 
 echo ""
 echo "═══════════════════════════════════════════════════════════════════"

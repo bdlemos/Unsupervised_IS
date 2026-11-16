@@ -25,6 +25,7 @@
 #   bash bash/run_factorial.sh
 #   DATASETS=books,webkb SEEDS="1 2" STEPS=1,2 bash bash/run_factorial.sh   # selection only, quick check
 #   DRY_RUN=1 bash bash/run_factorial.sh                                    # print the plan and exit
+#   INCLUDE_NO_IS=0 RATES="r10 r40" bash bash/run_factorial.sh              # extra rates, no-is already run
 #
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -40,8 +41,12 @@ SELECTIONS="${SELECTIONS:-re cells global}"
 SEEDS="${SEEDS:-1 2 3 4 5}"
 INPUT_REP="${INPUT_REP:-jina-v5}"
 RESULTS_DIR="${RESULTS_DIR:-${ROOT_DIR}/results/exp-factorial}"
+INCLUDE_NO_IS="${INCLUDE_NO_IS:-1}"
 
-methods=("no-is")
+methods=()
+if [[ "${INCLUDE_NO_IS}" == "1" ]]; then
+    methods+=("no-is")
+fi
 for seed in ${SEEDS}; do
     for rate in ${RATES}; do
         for selection in ${SELECTIONS}; do
@@ -60,7 +65,7 @@ echo "  Datasets:    ${DATASETS}"
 echo "  Rates:       ${RATES}"
 echo "  Selections:  ${SELECTIONS}"
 echo "  Seeds:       ${SEEDS}"
-echo "  Methods:     ${n_methods} (incl. no-is)"
+echo "  Methods:     ${n_methods} (no-is included: ${INCLUDE_NO_IS})"
 echo "  Selections × folds to classify: ${n_datasets} datasets × ${n_methods} methods × 10 folds = $((n_datasets * n_methods * 10)) fine-tunings (agnews has 5 folds)"
 echo "  Results Dir: ${RESULTS_DIR}"
 echo "═══════════════════════════════════════════════════════════════════"
